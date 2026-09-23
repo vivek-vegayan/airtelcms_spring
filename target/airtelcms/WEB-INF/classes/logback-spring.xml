@@ -1,0 +1,354 @@
+<configuration>
+
+    <!--    <property name="LOG_DIR" value="C:/vegayan/simplus/viveklogs" />-->
+
+    <property name="LOG_DIR" value="D:/CHM_LOGS" />
+
+
+    <!-- ================= CONSOLE ================= -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+
+    <!-- ========================================================= -->
+    <!-- 2) CANCEL CRQ APPENDER                    -->
+    <!-- ========================================================= -->
+
+    <appender name="CANCEL_CRQ_APPENDER"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>
+                ${LOG_DIR}/%d{yyyy-MM-dd}/Cancel_Crq-%d{yyyy-MM-dd}.log
+
+            </fileNamePattern>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+
+    <!-- ========================================================= -->
+    <!-- 2) Schedule Reschedule Crq APPENDER                    -->
+    <!-- ========================================================= -->
+
+    <appender name="SCHEDULE_RESCHEDULE_CRQ_APPENDER"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>
+                ${LOG_DIR}/%d{yyyy-MM-dd}/Schedule_Reschedule_Crq-%d{yyyy-MM-dd}.log
+
+            </fileNamePattern>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+
+    <!-- ========================================================= -->
+    <!-- 4)Create_Crq_Logger                          -->
+    <!-- ========================================================= -->
+
+    <appender name="CREATE_CRQ_APPENDER"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>
+                ${LOG_DIR}/%d{yyyy-MM-dd}/Create_Crq-%d{yyyy-MM-dd}.log
+
+            </fileNamePattern>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+
+    <!-- ========================================================= -->
+    <!-- 5) SCHEDULER EXTERNAL APPENDER -->
+    <!-- ========================================================= -->
+    <appender name="SCHEDULER_EXTERNAL_APPENDER"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>
+                ${LOG_DIR}/%d{yyyy-MM-dd}/Scheduler_External-%d{yyyy-MM-dd}.log
+
+            </fileNamePattern>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ========================================================= -->
+    <!-- 5) CHANGE REQUEST APPENDER -->
+    <!-- ========================================================= -->
+    <appender name="CRQ_UPDATE_TO_CHM_EXTERNAL_APPENDER"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>
+                ${LOG_DIR}/%d{yyyy-MM-dd}/Crq_Update_To_Chm-%d{yyyy-MM-dd}.log
+
+            </fileNamePattern>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ========================================================= -->
+    <!-- 5) CHANGE REQUEST APPENDER -->
+    <!-- ========================================================= -->
+    <appender name="CHANGE_REQUEST_EXTERNAL_APPENDER"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>
+                ${LOG_DIR}/%d{yyyy-MM-dd}/Change_Request-%d{yyyy-MM-dd}.log
+            </fileNamePattern>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+
+
+    <!-- ========================================================= -->
+    <!-- 5) CHANGE REQUEST APPENDER -->
+    <!-- ========================================================= -->
+    <appender name="CAB_REQUEST_EXTERNAL_APPENDER"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>
+                ${LOG_DIR}/%d{yyyy-MM-dd}/Cab_Request-%d{yyyy-MM-dd}.log
+            </fileNamePattern>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+
+    <!-- ========================================================= -->
+    <!-- 6) SUBMIT_PLAN_EXTERNAL_APPENDER -->
+    <!-- ========================================================= -->
+    <appender name="SUBMIT_PLAN_EXTERNAL_APPENDER"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>
+                ${LOG_DIR}/%d{yyyy-MM-dd}/Submit_Plan_External-%d{yyyy-MM-dd}.log
+
+            </fileNamePattern>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+
+    <!-- ========================================================= -->
+    <!-- 6) CRQ_STATUS_UPDATE_EXTERNAL_APPENDER -->
+    <!-- ========================================================= -->
+    <appender name="ATTRIBUTE_REQUEST_TO_CYGNET_EXTERNAL_APPENDER"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>
+                ${LOG_DIR}/%d{yyyy-MM-dd}/Attribute_Request_To_Cygnet-%d{yyyy-MM-dd}.log
+            </fileNamePattern>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+
+
+    <!-- ========================================================= -->
+    <!-- 7) EXCEL_UPLOAD_APPENDER -->
+    <!-- ========================================================= -->
+    <!-- ========================================================= -->
+    <!-- STORED PROCEDURE CALLS                                    -->
+    <!-- ========================================================= -->
+    <appender name="SQL_PROC_APPENDER"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>
+                ${LOG_DIR}/%d{yyyy-MM-dd}/Sql_Proc-%d{yyyy-MM-dd}.log
+            </fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+
+        <!-- Message only: the file is meant to be read (and replayed) as SQL,
+             so the timestamp goes in a trailing comment rather than in front
+             of the statement. -->
+        <encoder>
+            <pattern>%msg  -- %d{HH:mm:ss.SSS}%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+
+    <!-- ========================================================= -->
+    <!-- USER ACTION AUDIT TRAIL                                   -->
+    <!-- ========================================================= -->
+    <!--
+        A durable echo of the rows written to UI_ACTIONS_LOGGER. This is an
+        AUDIT stream, not an application-log stream: it carries only user
+        actions that actually happened. Technical failures of the audit
+        machinery itself (a rejected write, an unavailable database) go to the
+        ordinary application log under AuditLogWriter / AuditLogAspect, so the
+        two are never mixed up when reading either.
+
+        Kept longer than the other streams - a year rather than 90 days -
+        because that is what an audit copy is for.
+    -->
+    <appender name="AUDIT_APPENDER"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>
+                ${LOG_DIR}/%d{yyyy-MM-dd}/Ui_Action_Audit-%d{yyyy-MM-dd}.log
+            </fileNamePattern>
+            <maxHistory>365</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+
+    <appender name="EXCEL_UPLOAD_APPENDER"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>
+                ${LOG_DIR}/%d{yyyy-MM-dd}/Excel_Upload-%d{yyyy-MM-dd}.log
+            </fileNamePattern>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+
+    <!-- ========================================================= -->
+    <!-- Logger                          -->
+    <!-- ========================================================= -->
+    <!--
+        Every stored-procedure call, rendered as a runnable statement with its
+        bound arguments filled in - e.g. CALL Get_MOP_Create_Details(404,2,6);
+        Emitted by LoggingJdbcTemplate (both data sources) and, for the
+        execute(...) paths it cannot see into, by DatabaseUtils itself.
+        Set level="WARN" here to silence the whole stream without touching any
+        application log level.
+    -->
+    <logger name="SQL_PROC" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="SQL_PROC_APPENDER"/>
+    </logger>
+
+    <logger name="Create_Crq_Logger" level="INFO" additivity="false">
+        <appender-ref ref="CREATE_CRQ_APPENDER"/>
+    </logger>
+
+    <logger name="Cancel_Crq_Logger" level="INFO" additivity="false">
+        <appender-ref ref="CANCEL_CRQ_APPENDER"/>
+    </logger>
+
+    <logger name="Scheduler_External_Logger" level="INFO" additivity="false">
+        <appender-ref ref="SCHEDULER_EXTERNAL_APPENDER"/>
+    </logger>
+
+
+    <logger name="Submit_Plan_External_Logger" level="INFO" additivity="false">
+        <appender-ref ref="SUBMIT_PLAN_EXTERNAL_APPENDER"/>
+    </logger>
+
+    <logger name="Attribute_Request_To_Cygnet" level="INFO" additivity="false">
+        <appender-ref ref="ATTRIBUTE_REQUEST_TO_CYGNET_EXTERNAL_APPENDER"/>
+    </logger>
+
+    <logger name="Change_Request_Logger" level="INFO" additivity="false">
+        <appender-ref ref="CHANGE_REQUEST_EXTERNAL_APPENDER"/>
+    </logger>
+
+    <logger name="Cab_Request_Logger" level="INFO" additivity="false">
+        <appender-ref ref="CAB_REQUEST_EXTERNAL_APPENDER"/>
+    </logger>
+    <logger name="Excel_Upload_Logger" level="INFO" additivity="false">
+        <appender-ref ref="EXCEL_UPLOAD_APPENDER"/>
+    </logger>
+
+    <logger name="CRQ_Update_To_Chm" level="INFO" additivity="false">
+        <appender-ref ref="CRQ_UPDATE_TO_CHM_EXTERNAL_APPENDER"/>
+    </logger>
+
+    <!-- User actions, one line per row written to UI_ACTIONS_LOGGER.
+         Emitted by AuditLogWriter. See AUDIT_APPENDER above. -->
+    <logger name="Audit_Logger" level="INFO" additivity="false">
+        <appender-ref ref="AUDIT_APPENDER"/>
+    </logger>
+
+    <logger name="Schedule_Reschedule_Crq" level="INFO" additivity="false">
+        <appender-ref ref="SCHEDULE_RESCHEDULE_CRQ_APPENDER"/>
+    </logger>
+
+
+
+
+
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+
+
+</configuration>

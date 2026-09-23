@@ -1,0 +1,92 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------< com.vegayan:airtelmanagement >--------------------
+[INFO] Building airtelmanagement 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ war ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:4.0.1:run (default-cli) > test-compile @ airtelmanagement >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ airtelmanagement ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ airtelmanagement ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ airtelmanagement ---
+[INFO] skip non existing resourceDirectory D:\CHM_airtel_scheduler\Github_Repo\airtelmanagement\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ airtelmanagement ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 2 source files with javac [debug parameters release 17] to target\test-classes
+[INFO] 
+[INFO] <<< spring-boot:4.0.1:run (default-cli) < test-compile @ airtelmanagement <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:4.0.1:run (default-cli) @ airtelmanagement ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.0.1)
+
+2026-07-22 12:13:34.252 INFO  com.vegayan.airtelmanagement.AirtelmanagementApplication - Starting AirtelmanagementApplication using Java 17.0.12 with PID 31256 (D:\CHM_airtel_scheduler\Github_Repo\airtelmanagement\target\classes started by sujit in D:\CHM_airtel_scheduler\Github_Repo\airtelmanagement)
+2026-07-22 12:13:34.263 INFO  com.vegayan.airtelmanagement.AirtelmanagementApplication - No active profile set, falling back to 1 default profile: "default"
+2026-07-22 12:13:35.518 INFO  org.hibernate.validator.internal.util.Version - HV000001: Hibernate Validator 9.0.1.Final
+2026-07-22 12:13:41.059 INFO  org.springframework.boot.tomcat.TomcatWebServer - Tomcat initialized with port 18570 (http)
+2026-07-22 12:13:41.080 INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-18570"]
+2026-07-22 12:13:41.085 INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2026-07-22 12:13:41.085 INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/11.0.15]
+2026-07-22 12:13:41.230 INFO  org.springframework.boot.web.context.servlet.WebApplicationContextInitializer - Root WebApplicationContext: initialization completed in 6596 ms
+2026-07-22 12:13:41.369 INFO  com.vegayan.airtelmanagement.common.config.AppPropertiesConfig - Loaded config:
+2026-07-22 12:13:41.369 INFO  com.vegayan.airtelmanagement.common.config.AppPropertiesConfig - UserMgmt DB IP: 192.168.0.36:24801
+2026-07-22 12:13:41.369 INFO  com.vegayan.airtelmanagement.common.config.AppPropertiesConfig - UserMgmt DB Name: Vegayan_CHM_36
+2026-07-22 12:13:41.369 INFO  com.vegayan.airtelmanagement.common.config.AppPropertiesConfig - UserMgmt Username: root
+2026-07-22 12:13:41.369 INFO  com.vegayan.airtelmanagement.common.config.AppPropertiesConfig - Loaded config 2:
+2026-07-22 12:13:41.369 INFO  com.vegayan.airtelmanagement.common.config.AppPropertiesConfig - UserMgmt DB IP: 192.168.0.36:24801
+2026-07-22 12:13:41.369 INFO  com.vegayan.airtelmanagement.common.config.AppPropertiesConfig - UserMgmt DB Name: Vegayan_CHM_36
+2026-07-22 12:13:41.369 INFO  com.vegayan.airtelmanagement.common.config.AppPropertiesConfig - UserMgmt Username: root
+2026-07-22 12:13:41.387 INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2026-07-22 12:13:47.020 INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@2eb6d34a
+2026-07-22 12:13:47.034 INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+DataSourceOne has been validated successfully!
+2026-07-22 12:13:47.244 INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-2 - Starting...
+2026-07-22 12:13:47.662 INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-2 - Added connection com.mysql.cj.jdbc.ConnectionImpl@3348c987
+2026-07-22 12:13:47.663 INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-2 - Start completed.
+DataSourceTwo has been validated successfully!
+2026-07-22 12:13:53.299 WARN  org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: 344279cc-41bd-42f2-a641-a93ed0df0c83
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2026-07-22 12:13:53.377 INFO  org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer$InitializeUserDetailsManagerConfigurer - Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+2026-07-22 12:14:00.688 INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-18570"]
+2026-07-22 12:14:00.787 INFO  org.springframework.boot.tomcat.TomcatWebServer - Tomcat started on port 18570 (http) with context path '/'
+2026-07-22 12:14:01.161 INFO  org.springframework.boot.tomcat.TomcatWebServer - Tomcat initialized with port 18571 (http)
+2026-07-22 12:14:01.164 INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-18571"]
+2026-07-22 12:14:01.166 INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2026-07-22 12:14:01.168 INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/11.0.15]
+2026-07-22 12:14:01.295 INFO  org.springframework.boot.web.context.servlet.WebApplicationContextInitializer - Root WebApplicationContext: initialization completed in 475 ms
+2026-07-22 12:14:01.344 INFO  org.springframework.boot.actuate.endpoint.web.EndpointLinksResolver - Exposing 3 endpoints beneath base path '/actuator'
+2026-07-22 12:14:01.539 INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-18571"]
+2026-07-22 12:14:01.556 INFO  org.springframework.boot.tomcat.TomcatWebServer - Tomcat started on port 18571 (http) with context path '/'
+2026-07-22 12:14:01.601 INFO  com.vegayan.airtelmanagement.AirtelmanagementApplication - Started AirtelmanagementApplication in 28.987 seconds (process running for 30.339)
+2026-07-22 12:23:58.548 INFO  org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-07-22 12:23:58.558 INFO  org.springframework.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2026-07-22 12:23:58.625 INFO  org.springframework.web.servlet.DispatcherServlet - Completed initialization in 66 ms
+Received olmId: B0093363
+2026-07-22 12:24:02.122 INFO  com.vegayan.airtelmanagement.common.util.DatabaseUtils - Executing stored procedure: INSERT INTO AUTH_JWT_TOKENS (token_id, username, issued_at, valid) VALUES (?, ?, ?, ?) with args: [9713bee0-7991-45b4-bbcf-79a5f7097db0, B0093363, 2026-07-22 12:24:02.119, true]
+2026-07-22 12:24:02.897 INFO  com.vegayan.airtelmanagement.common.util.DatabaseUtils - Executing stored procedure: INSERT INTO AUTH_LOGIN_AUDIT (username, user_id, token_id, login_time, status) VALUES (?, ?, ?, ?, ?) with args: [B0093363, 1, 9713bee0-7991-45b4-bbcf-79a5f7097db0, 2026-07-22 12:24:02.897, LOGIN]
+2026-07-22 12:24:06.000 INFO  com.vegayan.airtelmanagement.common.security.jwt.JwtUtil - Generating JWT -> userId=1, tokenId=9713bee0-7991-45b4-bbcf-79a5f7097db0
+2026-07-22 12:24:07.526 INFO  com.vegayan.airtelmanagement.attendance.service.AttendanceService - call sp_get_today_attendance('1','2026-07-22');
+2026-07-22 12:24:11.536 INFO  com.vegayan.airtelmanagement.attendance.service.AttendanceService - call sp_set_work_mode('1','2026-07-22','WFH');
+2026-07-22 12:24:16.245 INFO  com.vegayan.airtelmanagement.attendance.service.AttendanceService - call sp_clock_in('1','2026-07-22','null');
+2026-07-22 12:24:19.127 INFO  com.vegayan.airtelmanagement.attendance.service.AttendanceService - call sp_get_today_attendance('1','2026-07-22');
+2026-07-22 12:24:21.059 INFO  com.vegayan.airtelmanagement.attendance.service.AttendanceService - call sp_clock_out('1','2026-07-22');
