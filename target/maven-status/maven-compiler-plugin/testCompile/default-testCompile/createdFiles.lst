@@ -1,7 +1,0 @@
-com\vegayan\airtelmanagement\AirtelmanagementApplicationTests.class
-com\vegayan\airtelmanagement\common\util\ProcedureCallFormatterTest.class
-com\vegayan\airtelmanagement\globalsettings\controller\GlobalSettingsPermissionControllerTest.class
-com\vegayan\airtelmanagement\schedular\service\SchedulingOutcomeMessagesTest.class
-com\vegayan\airtelmanagement\teammanagement\service\ExcelUploadJobStoreTest.class
-com\vegayan\airtelmanagement\teammanagement\service\EmployeeExcelBatchProcessorTest.class
-com\vegayan\airtelmanagement\teammanagement\service\EmployeeExcelValidationServiceTest.class

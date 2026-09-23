@@ -8,11 +8,13 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="airtelmanagement" />
+        <module name="airtelcms" />
       </profile>
     </annotationProcessing>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="airtelcms" options="-parameters" />
       <module name="airtelmanagement" options="-parameters" />
     </option>
   </component>
