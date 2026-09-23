@@ -19,10 +19,10 @@ public class TaskDto {
     private String taskProfileType;
     private String locationCodeM6;
     private String workAreaTerritory;
-    /** Execution window - see {@link BaseCrqDto#getExecutionSlotStart()}. */
+
     private LocalDateTime executionSlotStart;
     private LocalDateTime executionSlotEnd;
-    /** Legacy alias of executionSlot*, kept populated for existing clients. */
+
     private LocalDateTime activityPlanStartDate;
     private LocalDateTime activityPlanEndDate;
     private String taskActivity;

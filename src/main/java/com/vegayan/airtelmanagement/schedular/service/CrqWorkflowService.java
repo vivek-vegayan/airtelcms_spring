@@ -39,16 +39,10 @@ public class CrqWorkflowService extends BaseService {
 
     //------------------------STAGE METADATA------------------------------------------------
 
-    /**
-     * Workflow order of CRQ_MASTER_TBL.current_stage values.
-     */
     private static final List<String> STAGE_ORDER = List.of(
             "VALIDATE", "IMPACT_ANALYSIS", "MOP_CREATION", "MOP_VALIDATION",
             "SCHEDULING_APPROVAL", "EXECUTION", "CLOSURE");
 
-    /**
-     * Backend stage enum -> frontend stage key (routes/stageConfig).
-     */
     private static final Map<String, String> STAGE_KEYS = Map.of(
             "VALIDATE", "review",
             "IMPACT_ANALYSIS", "impactanalysis",
@@ -58,9 +52,6 @@ public class CrqWorkflowService extends BaseService {
             "EXECUTION", "activityimplement",
             "CLOSURE", "closer");
 
-    /**
-     * Backend stage enum -> human readable label.
-     */
     static final Map<String, String> STAGE_LABELS = Map.of(
             "VALIDATE", "Plan & Inventory",
             "IMPACT_ANALYSIS", "Impact Analysis",
@@ -93,9 +84,6 @@ public class CrqWorkflowService extends BaseService {
         }
     }
 
-    /**
-     * OLM id of the acting user - used as the audit performer when the UI does not supply one.
-     */
     private String resolveOlmId(Long actorUserId) {
         if (actorUserId == null) return null;
         try {
@@ -107,43 +95,16 @@ public class CrqWorkflowService extends BaseService {
         }
     }
 
-    /**
-     * Generic Start/Pause executor. executeProcedureForMessageV1 surfaces the
-     * procedure's error_message (already in progress / invalid transition /
-     * CRQ not found) as a BusinessException instead of silently succeeding.
-     */
+
     private ApiResponse runStageAction(String procName, Long actorUserId, String crqNo, String crqId) {
 //        LOGGER.info("call {}('{}','{}','{}');", procName, actorUserId, crqNo, crqId);
         return databaseUtils.executeProcedureForMessageV1(
                 jdbcTemplateTwo, "call " + procName + "(?,?,?)", actorUserId, crqNo, crqId);
     }
 
-    /**
-     * Generic Done/Failed executor for the *_To_Done_Or_Failed procedures.
-     * The procedure itself validates the CRQ is in the expected stage,
-     * completes it, records the history event and advances the CRQ - all in
-     * one transaction, so partial transitions are impossible.
-     */
-    private ApiResponse runStageOutcome(String procName, Long actorUserId, String olmId,
-                                        String crqNo, String crqId, String localStatus, String remark) {
-        String performer = (olmId == null || olmId.isBlank()) ? resolveOlmId(actorUserId) : olmId;
-        LOGGER.info("call {}('{}','{}','{}','{}','{}');", procName, performer, crqNo, crqId, localStatus, remark);
-        return databaseUtils.executeProcedureForMessageV1(
-                jdbcTemplateTwo, "call " + procName + "(?,?,?,?,?)",
-                performer, crqNo, crqId, localStatus, remark);
-    }
 
     //------------------------STAGE HISTORY-------------------------------------------------
 
-    /**
-     * Attaches per-stage history to every CRQ of the response with a single
-     * additional procedure call (no per-CRQ queries). Each CRQ receives:
-     * - currentStage (filled from history when the listing didn't return it)
-     * - history[]: every stage that has a CRQ_STAGE_ASSIGN_TBL record, in
-     * workflow order, previous stages carrying their final status and
-     * timestamps and flagged readOnly
-     * - actionable: whether this listing's record is the CRQ's live stage
-     */
     private PlanResponseDtoNew withStageHistory(PlanResponseDtoNew response,
                                                 Long domainId, Long subDomainId,
                                                 String listingStage) {
@@ -233,7 +194,6 @@ public class CrqWorkflowService extends BaseService {
             channelSftp.connect(5000);
 
             String folderPath = config.getSFTP_JSON_RAW_FILE_PATH();
-//            String remoteFilePath = folderPath + "/" + crqNo;
             String remoteFilePath = folderPath + "/CRQ_" + crqNo + "_output.json";
 
             try (InputStream inputStream = channelSftp.get(remoteFilePath)) {
@@ -283,8 +243,6 @@ public class CrqWorkflowService extends BaseService {
             channelSftp.connect(5000);
 
             String folderPath = config.getSFTP_JSON_RAW_FILE_PATH(); // e.g. /data-vol/chm_file_store/crq_validation
-
-//            String remoteFilePath = folderPath + "/" + crqNo;
 
             String remoteFilePath = folderPath + "/CRQ_" + crqNo + "_output.json";
 
@@ -411,11 +369,6 @@ public class CrqWorkflowService extends BaseService {
         return runStageAction("Update_CRQ_Review_To_Pause", actorUserId, crqNo, crqId);
     }
 
-//    public ApiResponse updateCrqReviewStatusToDone(Long actorUserId, String olmId, String crqNo, String crqId, String localStatus, String remark) {
-//        return runStageOutcome("Update_CRQ_Review_To_Done_Or_Failed",
-//                actorUserId, olmId, crqNo, crqId, localStatus, remark);
-//    }
-
     public ApiResponse updateCrqReviewStatusToDoneOrFailed(
             String olmId,
             String crqNo,
@@ -510,30 +463,6 @@ public class CrqWorkflowService extends BaseService {
         );
         return withStageHistory(builder.build(flat), domainId, subDomainId, "IMPACT_ANALYSIS");
     }
-
-//    public ApiResponse updateImpactAnalysisStatusToDone(Long actorUserId, String olmId, String crqNo, String crqId, String localStatus, String remark, String planNumber, String taskNumber, String cygnetStatus, String field1, String field3, String field4, String field5) {
-//        cancelCrqLog.info("Calling Update_CRQ_Impact_Analysis_To_Done_Or_Failed");
-//
-//        ApiResponse dbResponse = runStageOutcome("Update_CRQ_Impact_Analysis_To_Done_Or_Failed",
-//                actorUserId, olmId, crqNo, crqId, localStatus, remark);
-//
-//        cancelCrqLog.info("[IMPACT ANALYSIS] DB Response => {}", dbResponse);
-//
-//        //  Reused logic
-//        handlePostCrqActions(
-//                localStatus,
-//                crqNo,
-//                planNumber,
-//                taskNumber,
-//                cygnetStatus,
-//                field1,
-//                field3,
-//                field4,
-//                field5
-//        );
-//
-//        return dbResponse;
-//    }
 
     public ApiResponse updateImpactAnalysisStatusToDone(
             String olmId,
@@ -761,12 +690,6 @@ public class CrqWorkflowService extends BaseService {
         return runStageAction("Update_CRQ_Mop_Create_To_Pause", actorUserId, crqNo, crqId);
     }
 
-//    public ApiResponse updateMopCreateStatusToDone(Long actorUserId, String olmId, String crqNo,
-//                                                   String crqId, String localStatus, String remark) {
-//        return runStageOutcome("Update_CRQ_Mop_Create_To_Done_Or_Failed",
-//                actorUserId, olmId, crqNo, crqId, localStatus, remark);
-//    }
-
     public ApiResponse updateMopCreateStatusToDone(
             String olmId,
             String crqNo,
@@ -871,13 +794,6 @@ public class CrqWorkflowService extends BaseService {
         return runStageAction("Update_CRQ_MOP_Validate_To_Pause", actorUserId, crqNo, crqId);
     }
 
-//    public ApiResponse updateMopValidateStatusToDone(Long actorUserId, String olmId, String crqNo,
-//                                                     String crqId, String localStatus, String remark) {
-//        return runStageOutcome("Update_CRQ_MOP_Validate_To_Done_Or_Failed",
-//                actorUserId, olmId, crqNo, crqId, localStatus, remark);
-//    }
-
-
     public ApiResponse updateMopValidateStatusToDone(
             String olmId,
             String crqNo,
@@ -981,12 +897,6 @@ public class CrqWorkflowService extends BaseService {
     public ApiResponse updateSchedulingStatusToPause(Long actorUserId, String crqNo, String crqId) {
         return runStageAction("Update_CRQ_Scheduling_To_Pause", actorUserId, crqNo, crqId);
     }
-
-//    public ApiResponse updateSchedulingStatusToDone(Long actorUserId, String olmId, String crqNo,
-//                                                    String crqId, String localStatus, String remark) {
-//        return runStageOutcome("Update_CRQ_Scheduling_To_Done_Or_Failed",
-//                actorUserId, olmId, crqNo, crqId, localStatus, remark);
-//    }
 
     public ApiResponse updateSchedulingStatusToDone(
             String olmId,
@@ -1131,12 +1041,6 @@ public class CrqWorkflowService extends BaseService {
         return runStageAction("Update_CRQ_Activity_Implement_To_Pause", actorUserId, crqNo, crqId);
     }
 
-//    public ApiResponse updateActivityImplementStatusToDone(Long actorUserId, String olmId, String crqNo,
-//                                                           String crqId, String localStatus, String remark) {
-//        return runStageOutcome("Update_CRQ_Activity_Implement_To_Done_Or_Failed",
-//                actorUserId, olmId, crqNo, crqId, localStatus, remark);
-//    }
-
     public ApiResponse updateActivityImplementStatusToDone(
             String olmId,
             String crqNo,
@@ -1240,12 +1144,6 @@ public class CrqWorkflowService extends BaseService {
         return runStageAction("Update_CRQ_Closer_Status_To_Pause", actorUserId, crqNo, crqId);
     }
 
-    //    public ApiResponse updateCloserStatusToDone(Long actorUserId, String olmId, String crqNo,
-//                                                String crqId, String localStatus, String remark) {
-//        return runStageOutcome("Update_CRQ_Closer_To_Done_Or_Failed",
-//                actorUserId, olmId, crqNo, crqId, localStatus, remark);
-//    }
-
     public ApiResponse updateCloserStatusToDone(
             String olmId,
             String crqNo,
@@ -1343,11 +1241,6 @@ public class CrqWorkflowService extends BaseService {
 
     //----------------------------WORKFLOW OVERVIEW-----------------------------------------
 
-    /**
-     * Every CRQ of the domain/sub-domain regardless of its current stage,
-     * with complete stage history - backs the "View Selected CRQ" cockpit
-     * so a CRQ stays visible after leaving Plan & Inventory.
-     */
     public PlanResponseDtoNew getWorkflowOverview(Long userId, Long domainId, Long subDomainId) {
         LOGGER.info("call Get_CRQ_Workflow_Overview('{}','{}','{}');", userId, domainId, subDomainId);
         List<CrqOverviewDto> flat = databaseUtils.executeProcedureGetDataWithError(
@@ -1359,13 +1252,6 @@ public class CrqWorkflowService extends BaseService {
         return withStageHistory(builder.build(flat), domainId, subDomainId, null);
     }
 
-    /**
-     * Paginated/searchable sibling of {@link #getWorkflowOverview}, backing
-     * CrqWorkflowSidebar's CRQ list so a scope with 1000+ CRQs is never
-     * fetched all at once. Plan grouping is preserved within each page -
-     * content is this page's plans, containing only the CRQs that fell in
-     * the LIMIT/OFFSET window.
-     */
     public PageResponseDto<PlanDtoNew> getWorkflowOverviewPaged(
             Long userId, Long domainId, Long subDomainId, String search, int page, int size) {
 
@@ -1397,11 +1283,6 @@ public class CrqWorkflowService extends BaseService {
         return PaginationUtils.buildPageResponse(plans, PageRequest.of(safePage, safeSize), totalElements);
     }
 
-    /**
-     * Hydrates the cockpit's main panel (header/rail/summary/history) for
-     * exactly one CRQ, independent of whichever page of the paged overview
-     * is currently showing.
-     */
     public PlanResponseDtoNew getWorkflowOverviewByCrqNo(
             Long userId, Long domainId, Long subDomainId, String crqNo) {
         LOGGER.info("call Get_CRQ_Workflow_Overview_By_Crq_No('{}','{}','{}','{}');",
@@ -1420,28 +1301,7 @@ public class CrqWorkflowService extends BaseService {
     /** Hard cap on Global CRQ Search hits, whatever the caller asks for. */
     private static final int GLOBAL_SEARCH_MAX_LIMIT = 25;
 
-    /**
-     * Global CRQ Search for the workflow cockpit: finds a CRQ by number
-     * <em>across</em> domains and sub-domains, so a user can jump to a CRQ
-     * without first having to guess which org scope it sits in.
-     *
-     * <p>This deliberately does not reuse {@link #getWorkflowOverviewByCrqNo}:
-     * that path filters on a hard {@code m.domain_id = p_domain_id} and takes
-     * sub_domain_id as mandatory, so it can only find CRQs inside the scope
-     * already selected in the filter bar - which is the opposite of a global
-     * search. See db/migration/2026-08-27_crq_global_search.sql for the full
-     * rationale.
-     *
-     * <p>Cross-domain visibility is not the same as unrestricted visibility:
-     * Get_CRQ_Global_Search carries over the overview family's TEAM_MEMBER
-     * restriction verbatim, so such a user still only matches CRQs they are
-     * assigned to or have acted on.
-     *
-     * <p>{@code currentStage} comes back raw and is additionally resolved here
-     * to the frontend stage key / 1-based workflow position using the same
-     * {@link #STAGE_KEYS} and {@link #STAGE_ORDER} constants the rest of this
-     * service uses, so the search cannot drift from the workflow it routes into.
-     */
+
     public List<CrqGlobalSearchDto> searchCrqGlobally(Long userId, String search, Integer limit) {
         String term = search == null ? "" : search.trim();
         if (term.isEmpty()) {
@@ -1474,36 +1334,10 @@ public class CrqWorkflowService extends BaseService {
 
     //----------------------------CANCELLED CRQ REGISTRY------------------------------------
 
-    /** Page size used when the caller asks for a non-positive one. */
     private static final int CANCELLED_DEFAULT_PAGE_SIZE = 25;
 
-    /** Hard cap on a page of the cancelled registry, mirroring the procedure's own LEAST(). */
     private static final int CANCELLED_MAX_PAGE_SIZE = 200;
 
-    /**
-     * Every cancelled CRQ the caller may see, in one paged, searchable list.
-     *
-     * <p>"Cancelled" here means {@code CRQ_MASTER_TBL.current_status =
-     * 'CANCELLED'} - the enum, not the {@code 'canceled'} display label the
-     * stage procedures render into a chip, and not the presence of a
-     * CRQ_CANCEL_TBL audit row (a CRQ can be cancelled, rolled back and be
-     * running again while keeping that row). See
-     * db/migration/2026-09-03_cancelled_crq_registry.sql.
-     *
-     * <p>All four org-hierarchy levels are optional and independent: a null
-     * (or 0) level is not narrowed on at all, so the screen opens on the
-     * caller's entire cancelled population. This is intentionally the
-     * opposite of the stage endpoints, which take domain/sub-domain as
-     * required scope - a register that could only be read one sub-domain at a
-     * time would not be "all cancelled CRQs in one place". Permission scope is
-     * unaffected: the procedure still restricts a TEAM_MEMBER to CRQs they are
-     * assigned to or have acted on.
-     *
-     * <p>The procedure returns the size of the whole filtered population on
-     * every row ({@code COUNT(*) OVER ()}), so the page and its total arrive
-     * in one round trip; it is lifted into the PageResponseDto here and
-     * cleared off the rows so it is not repeated on every element of the JSON.
-     */
     public PageResponseDto<CancelledCrqDto> getCancelledCrqs(
             Long actorUserId,
             Integer verticalId,
@@ -1542,19 +1376,6 @@ public class CrqWorkflowService extends BaseService {
         return PaginationUtils.buildPageResponse(rows, PageRequest.of(safePage, safeSize), totalElements);
     }
 
-    /**
-     * Stat-strip counters for the cancelled registry, aggregated over exactly
-     * the population {@link #getCancelledCrqs} pages through - same filters,
-     * same TEAM_MEMBER scoping - so the strip cannot contradict the table.
-     *
-     * <p>Kept as its own endpoint rather than folded into the list response
-     * because it depends only on the filters, not on the page: paging through
-     * the register must not re-aggregate the whole population on every click.
-     *
-     * <p>The procedure always emits one row, so a null here means the call
-     * itself returned nothing; an empty summary is returned in that case so
-     * the UI never has to branch on it.
-     */
     public CancelledCrqSummaryDto getCancelledCrqSummary(
             Long actorUserId,
             Integer verticalId,
@@ -1591,17 +1412,6 @@ public class CrqWorkflowService extends BaseService {
 
     private static final byte[] PDF_MAGIC = {'%', 'P', 'D', 'F', '-'};
 
-    /**
-     * Raw bytes of the CRQ's stored plan PDF (CRQ_DOCUMENT_TBL.file_bytes
-     * via Get_Change_PlanPDF). Throws BusinessException when no document is
-     * stored for the CRQ, so the controller can surface a 404.
-     *
-     * file_bytes has been observed holding the document as base64 text
-     * rather than raw binary (depends on how it was originally loaded), so
-     * bytes that don't start with the "%PDF-" header are tried as base64
-     * before being rejected - browsers otherwise fail with an opaque
-     * "Failed to load PDF document" instead of a diagnosable error.
-     */
     public byte[] getCrqPlanPdf(String crqNo) {
         List<byte[]> rows = jdbcTemplateTwo.query(
                 "CALL Get_Change_PlanPDF(?)",
@@ -1633,7 +1443,6 @@ public class CrqWorkflowService extends BaseService {
         return true;
     }
 
-    /** Returns null (instead of throwing) when the bytes aren't valid base64. */
     private static byte[] tryBase64Decode(byte[] bytes) {
         try {
             String text = new String(bytes, java.nio.charset.StandardCharsets.US_ASCII).trim();
@@ -1646,52 +1455,15 @@ public class CrqWorkflowService extends BaseService {
 
     //----------------------------MOP CREATE DOCUMENT---------------------------------------
 
-    /**
-     * Raw upload ceiling for a MOP document. Base64 inflates it by a third on
-     * the way to CRQ_PDF_TBL, so 25 MB arrives as a ~33 MB statement - well
-     * inside both the 100 MB multipart limit and MySQL max_allowed_packet
-     * (1 GB on this server). Mirrored by MOP_PDF_MAX_BYTES on the frontend.
-     */
     private static final long MOP_PDF_MAX_BYTES = 25L * 1024 * 1024;
 
-    /** ZIP local-file header - the container every .xlsx is packaged in. */
     private static final byte[] ZIP_MAGIC = {'P', 'K', 0x03, 0x04};
 
-    /** OLE2 compound-file header - the legacy .xls (BIFF) container. */
     private static final byte[] OLE2_MAGIC =
             {(byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0, (byte) 0xA1, (byte) 0xB1, 0x1A, (byte) 0xE1};
 
-    /**
-     * A stored MOP document plus the format it turned out to be. The format is
-     * derived from the bytes, not recorded anywhere: CRQ_PDF_TBL has one
-     * LONGTEXT column and no MIME or filename column, and neither procedure
-     * takes one, so content sniffing is what lets the same slot hold either a
-     * PDF or a workbook without touching the schema.
-     */
     public record MopDocument(byte[] bytes, String kind) {}
 
-    /**
-     * Read-only header for the MOP Create dialog's document panel.
-     *
-     * Deliberately does NOT call SP_GET_MOP_DETAILS_BY_CRQN. That procedure is
-     * named like a read but is a copy of SP_MOP_CREATE: it INSERTs a `mop`
-     * row, a v1 `mop_version`, a `mop_file` placeholder and an audit entry,
-     * then SIGNALs 'MOP already exists for this CRQ' on every later call.
-     * Driving the dialog's GET off it therefore created a MOP the first time
-     * the dialog was opened and answered 500 every time after. The header
-     * reads the six columns back off the `mop` row that procedure writes
-     * instead, and the procedure itself is reached only through
-     * createMopForCrq.
-     *
-     * The join is LEFT so an existing CRQ with no MOP yet still returns a row -
-     * the "not created yet" state (mopExists false) the panel offers a Create
-     * action for. An unknown CRQ returns no row at all, so the controller can
-     * still answer 404.
-     *
-     * `v_mop_queue` would be the natural source but INNER JOINs `app_user` on
-     * `created_by`, which the procedure inserts as NULL - every MOP it creates
-     * is invisible through that view.
-     */
     public MopCreateDetailsDto getMopDetailsByCrqNo(String crqNo) {
 
         List<MopCreateDetailsDto> rows = jdbcTemplateTwo.query(
@@ -1742,17 +1514,6 @@ public class CrqWorkflowService extends BaseService {
         return details;
     }
 
-    /**
-     * Creates the MOP record for a CRQ through SP_GET_MOP_DETAILS_BY_CRQN,
-     * called exactly as it stands - it writes `mop`, `mop_version` v1,
-     * `mop_file` and the audit trail, then returns the six CRQ facts it copied
-     * onto the new row.
-     *
-     * The procedure reports every refusal by SIGNALing SQLSTATE 45000, which
-     * arrives here as an opaque DataAccessException; its three messages are
-     * translated into a BusinessException so the dialog can show the actual
-     * reason ("A MOP already exists for this CRQ") rather than a generic 500.
-     */
     public MopCreateDetailsDto createMopForCrq(String crqNo) {
 
         LOGGER.info("call SP_GET_MOP_DETAILS_BY_CRQN('{}');", crqNo);
@@ -1787,11 +1548,6 @@ public class CrqWorkflowService extends BaseService {
         return rows.get(0);
     }
 
-    /**
-     * The SIGNAL text behind a failed SP_GET_MOP_DETAILS_BY_CRQN call. It sits
-     * somewhere in the exception chain rather than on the top exception, so the
-     * chain is walked for one of the three messages the procedure raises.
-     */
     private static String mopCreateFailureMessage(DataAccessException e) {
         for (Throwable t = e; t != null; t = t.getCause()) {
             String message = t.getMessage();
@@ -1811,24 +1567,10 @@ public class CrqWorkflowService extends BaseService {
         return "The MOP could not be created.";
     }
 
-    /** Null-safe java.sql.Timestamp -> LocalDateTime, used by both readers above. */
     private static LocalDateTime toLocalDateTime(java.sql.Timestamp ts) {
         return ts == null ? null : ts.toLocalDateTime();
     }
 
-    /**
-     * Stores (or replaces) the CRQ's MOP document via
-     * SP_STORE_CRQ_MOP_CREATE_PDF. Accepts a PDF or an Excel workbook -
-     * CRQ_PDF_TBL holds one row per CRQ, so whichever is uploaded becomes the
-     * CRQ's MOP and supersedes what was there.
-     *
-     * CRQ_PDF_TBL.PDF_DATA is LONGTEXT even though the procedure declares its
-     * parameter as LONGBLOB, so raw bytes cannot survive the round trip - the
-     * document is base64 encoded here and decoded again on read. The
-     * procedure itself SIGNALs SQLSTATE 45000 for an unknown CRQ, and its
-     * INSERT ... ON DUPLICATE KEY UPDATE makes re-uploading idempotent, so
-     * neither existence nor replacement is checked again here.
-     */
     public ApiResponse storeMopCreateDocument(String crqNo, byte[] bytes, String originalFilename) {
         if (bytes == null || bytes.length == 0) {
             throw new BusinessException("The uploaded MOP document is empty.");
@@ -1856,11 +1598,6 @@ public class CrqWorkflowService extends BaseService {
         );
     }
 
-    /**
-     * The CRQ's stored MOP document and its format (SP_GET_CRQ_MOP_CREATE_PDF).
-     * Throws BusinessException when nothing is stored, so the controller can
-     * surface a 404 rather than an empty 200 the browser would try to render.
-     */
     public MopDocument getMopCreateDocument(String crqNo) {
         MopDocument document = findMopCreateDocument(crqNo);
         if (document == null) {
@@ -1869,16 +1606,6 @@ public class CrqWorkflowService extends BaseService {
         return document;
     }
 
-    /**
-     * Shared read behind getMopCreateDocument and the documentAttached flag -
-     * returns null rather than throwing so the details header can report
-     * "nothing attached yet" without treating it as an error.
-     *
-     * Written by storeMopCreateDocument as base64 text, but the column
-     * predates this endpoint and holds whatever earlier callers put there, so
-     * raw document bytes are accepted too. Anything that is neither a PDF nor
-     * a workbook in either encoding is treated as no document at all.
-     */
     private MopDocument findMopCreateDocument(String crqNo) {
         List<byte[]> rows = jdbcTemplateTwo.query(
                 "CALL SP_GET_CRQ_MOP_CREATE_PDF(?)",
@@ -1903,15 +1630,6 @@ public class CrqWorkflowService extends BaseService {
         return decodedKind == null ? null : new MopDocument(decoded, decodedKind);
     }
 
-    /**
-     * "PDF", "XLSX" or "XLS" from the leading magic bytes, or null when the
-     * content is none of them.
-     *
-     * .xlsx and .docx share the ZIP container, so ZIP alone is not enough -
-     * an OOXML part path ("xl/" for a workbook) is looked for in the first
-     * few kilobytes, where the local file headers sit. Getting this wrong
-     * either way is visible: a mislabelled workbook opens in the PDF viewer.
-     */
     private static String detectDocumentKind(byte[] bytes) {
         if (startsWithPdfMagic(bytes)) return "PDF";
         if (startsWith(bytes, OLE2_MAGIC)) return "XLS";
@@ -1927,7 +1645,7 @@ public class CrqWorkflowService extends BaseService {
         return true;
     }
 
-    /** Looks for the "xl/" OOXML part prefix among the ZIP's first entries. */
+
     private static boolean looksLikeOoxmlWorkbook(byte[] bytes) {
         int window = Math.min(bytes.length, 8192);
         byte[] needle = {'x', 'l', '/'};
@@ -1943,21 +1661,7 @@ public class CrqWorkflowService extends BaseService {
 
     //----------------------------MOP VALIDATE REVIEW---------------------------------------
 
-    /**
-     * The MOP Validate preview panel's data: the CRQ's current MOP version and
-     * the review standing against it.
-     *
-     * The version id comes from SP_GET_MOP_CURRENT_VERSION, which returns
-     * nothing but `mop.current_version_id` - no row at all when the CRQ has no
-     * MOP, and a null column when the MOP carries no version yet, so the two
-     * are distinguished here rather than collapsed into "not found". The
-     * version's own fields, its document and any open review are then read
-     * directly: no procedure returns them, and `v_mop_version_detail` INNER
-     * JOINs the empty `app_user` table so it yields nothing.
-     *
-     * Returns null only when the CRQ itself is unknown, letting the controller
-     * answer 404 and the panel tell "no MOP yet" apart from "no such CRQ".
-     */
+
     public MopValidateDetailsDto getMopValidateDetails(String crqNo, Long actorUserId) {
 
         List<Map<String, Object>> mopRows = jdbcTemplateTwo.queryForList(
@@ -2007,7 +1711,7 @@ public class CrqWorkflowService extends BaseService {
         return dto;
     }
 
-    /** `mop_version` plus that version's mop_document row, in one read. */
+
     private void applyVersionDetail(MopValidateDetailsDto dto, Long versionId) {
 
         List<Map<String, Object>> rows = jdbcTemplateTwo.queryForList(
@@ -2039,12 +1743,6 @@ public class CrqWorkflowService extends BaseService {
         dto.setSizeBytes(asLong(row.get("size_bytes")));
     }
 
-    /**
-     * The still-open review on a version, if any. Ordered newest first:
-     * `mop_review` has no unique key on (version_id, reviewer_id) and
-     * sp_mop_review_start INSERTs unconditionally, so duplicates are possible
-     * and the latest row is the live review.
-     */
     private void applyOpenReview(MopValidateDetailsDto dto, Long versionId, String actorOlmId) {
 
         List<Map<String, Object>> rows = jdbcTemplateTwo.queryForList(
@@ -2066,19 +1764,6 @@ public class CrqWorkflowService extends BaseService {
         dto.setReviewOwnedByMe(actorOlmId != null && actorOlmId.equalsIgnoreCase(reviewerId));
     }
 
-    /**
-     * Opens the review on the CRQ's current MOP version through
-     * sp_mop_review_start, called exactly as it stands - it inserts
-     * `mop_review`, writes a 'review_opened' audit entry and moves both
-     * `mop_version` and `mop` to in_review.
-     *
-     * That procedure INSERTs unconditionally and `mop_review` has no unique key
-     * on (version_id, reviewer_id), so calling it twice silently leaves two
-     * open reviews on one version. It is guarded here instead: an already-open
-     * review is refused with the reason rather than duplicated.
-     *
-     * Returns the refreshed panel state so the caller does not have to re-read.
-     */
     public MopValidateDetailsDto startMopReview(String crqNo, Long actorUserId) {
 
         MopValidateDetailsDto current = getMopValidateDetails(crqNo, actorUserId);
@@ -2115,7 +1800,6 @@ public class CrqWorkflowService extends BaseService {
         return getMopValidateDetails(crqNo, actorUserId);
     }
 
-    /** The SIGNAL text behind a failed sp_mop_review_start, walked out of the chain. */
     private static String mopReviewFailureMessage(DataAccessException e) {
         for (Throwable t = e; t != null; t = t.getCause()) {
             String message = t.getMessage();
@@ -2127,10 +1811,6 @@ public class CrqWorkflowService extends BaseService {
     }
 
     //----------------------------COLUMN COERCION-------------------------------------------
-    // queryForList hands back whatever the driver chose for the column, and
-    // Connector/J returns DATETIME as either java.sql.Timestamp or
-    // java.time.LocalDateTime depending on its settings - so both are accepted
-    // rather than cast blindly.
 
     private static String asString(Object value) {
         return value == null ? null : value.toString();
@@ -2162,18 +1842,6 @@ public class CrqWorkflowService extends BaseService {
 
     //----------------------------MOP REVIEW WORKSPACE--------------------------------------
 
-    /**
-     * The fullscreen MOP validation workspace: the MOP header, one version, its
-     * findings, the version history and the audit trail, in a single response.
-     *
-     * `versionId` selects which version is being viewed; null means the MOP's
-     * current one. A version belonging to another MOP is rejected rather than
-     * rendered, so a hand-edited URL cannot show one CRQ's findings under
-     * another CRQ's header.
-     *
-     * Returns null when the CRQ itself is unknown, so the controller can answer
-     * 404 while "CRQ exists but has no MOP" stays an ordinary 200.
-     */
     public MopReviewWorkspaceDto getMopReviewWorkspace(String crqNo, Long versionId, Long actorUserId) {
 
         List<Map<String, Object>> mopRows = jdbcTemplateTwo.queryForList(
@@ -2278,7 +1946,6 @@ public class CrqWorkflowService extends BaseService {
         return dto;
     }
 
-    /** All versions of a MOP, newest first, each with its open-finding count. */
     private List<MopVersionSummaryDto> readVersions(Long mopId) {
         return jdbcTemplateTwo.queryForList(
                         "SELECT v.version_id, v.version_no, v.status, v.note, v.uploaded_by, "
@@ -2307,10 +1974,6 @@ public class CrqWorkflowService extends BaseService {
                 .toList();
     }
 
-    /**
-     * Findings on a version, withdrawn ones excluded - "Delete" in the rail is
-     * a withdrawal, not a row removal, so the audit trail keeps its story.
-     */
     private List<MopFindingDto> readFindings(Long versionId) {
         return jdbcTemplateTwo.queryForList(
                         "SELECT finding_id, finding_ref, version_id, page_no, step_ref, "
@@ -2336,7 +1999,6 @@ public class CrqWorkflowService extends BaseService {
                 .toList();
     }
 
-    /** The MOP's audit trail, newest first. Capped - the rail is a column, not a report. */
     private List<MopAuditEntryDto> readAudit(Long mopId) {
         return jdbcTemplateTwo.queryForList(
                         "SELECT audit_id, version_id, actor_id, event_type, detail, created_at "
@@ -2357,7 +2019,6 @@ public class CrqWorkflowService extends BaseService {
                 .toList();
     }
 
-    /** `mop_file` name and page count for the viewed version. */
     private void applyVersionFile(MopReviewWorkspaceDto dto, Long versionId) {
         List<Map<String, Object>> rows = jdbcTemplateTwo.queryForList(
                 "SELECT v.page_count, f.original_name "
@@ -2373,7 +2034,6 @@ public class CrqWorkflowService extends BaseService {
         dto.setFileName(asString(rows.get(0).get("original_name")));
     }
 
-    /** Shared with the light panel's reader - the open review on a version, if any. */
     private void applyOpenReviewTo(MopReviewWorkspaceDto dto, Long versionId, String actorOlmId) {
         List<Map<String, Object>> rows = jdbcTemplateTwo.queryForList(
                 "SELECT review_id, reviewer_id, started_at FROM mop_review "
@@ -2394,15 +2054,6 @@ public class CrqWorkflowService extends BaseService {
 
     //----------------------------MOP REVIEW ACTIONS----------------------------------------
 
-    /**
-     * Raises a finding against a version through sp_mop_finding_add, which
-     * numbers it ("F-01"), inserts it and audits the raise in one transaction.
-     *
-     * The procedure declares two OUT parameters. They are not read back here -
-     * the refreshed workspace already carries the new finding, and reading OUTs
-     * would need a CallableStatement round trip to learn a reference that is
-     * about to be returned anyway.
-     */
     public MopReviewWorkspaceDto addMopFinding(String crqNo, Long versionId, Integer pageNo,
                                                String stepRef, String description, Long actorUserId) {
 
@@ -2428,15 +2079,6 @@ public class CrqWorkflowService extends BaseService {
         return getMopReviewWorkspace(crqNo, workspace.getVersionId(), actorUserId);
     }
 
-    /**
-     * Moves a finding between open / resolved / withdrawn.
-     *
-     * No procedure covers this - only sp_mop_finding_add exists - so the row is
-     * updated directly and the event is pushed through sp_mop_audit_add so the
-     * trail stays complete. "Delete" in the rail withdraws rather than deletes,
-     * which is what the `withdrawn` enum value is for: a deleted row would
-     * leave its "finding raised" audit entry pointing at nothing.
-     */
     public MopReviewWorkspaceDto setMopFindingState(String crqNo, Long findingId,
                                                     String state, Long actorUserId) {
 
@@ -2483,16 +2125,6 @@ public class CrqWorkflowService extends BaseService {
         return getMopReviewWorkspace(crqNo, versionId, actorUserId);
     }
 
-    /**
-     * Validates a version through sp_mop_version_validate - it stamps the
-     * decision, supersedes every other in-flight version, moves the MOP to
-     * validated with this version approved, closes the open review and audits
-     * the release.
-     *
-     * The procedure refuses while findings are open unless `force` is set; that
-     * refusal is surfaced verbatim so the reviewer can choose to override
-     * rather than being told only that it failed.
-     */
     public MopReviewWorkspaceDto validateMopVersion(String crqNo, Long versionId, String note,
                                                     boolean force, Long actorUserId) {
 
@@ -2511,12 +2143,6 @@ public class CrqWorkflowService extends BaseService {
         return getMopReviewWorkspace(crqNo, workspace.getVersionId(), actorUserId);
     }
 
-    /**
-     * Rejects a version through sp_mop_version_reject - it stamps the reason,
-     * moves the MOP to rejected, closes the open review and audits it. The
-     * procedure requires a non-empty reason and says so; that is checked here
-     * too so the dialog can disable its button rather than round-trip.
-     */
     public MopReviewWorkspaceDto rejectMopVersion(String crqNo, Long versionId, String reason,
                                                   Long actorUserId) {
 
@@ -2540,11 +2166,6 @@ public class CrqWorkflowService extends BaseService {
         return getMopReviewWorkspace(crqNo, workspace.getVersionId(), actorUserId);
     }
 
-    /**
-     * The workspace for a write, with the checks every one of them shares: the
-     * CRQ exists, it has a MOP with a version, and the version being acted on
-     * is the latest on a MOP that has not already been validated.
-     */
     private MopReviewWorkspaceDto requireEditableWorkspace(String crqNo, Long versionId, Long actorUserId) {
 
         MopReviewWorkspaceDto workspace = getMopReviewWorkspace(crqNo, versionId, actorUserId);
@@ -2578,18 +2199,6 @@ public class CrqWorkflowService extends BaseService {
 
     //-------------------------------CANCELLATION REASONS------------------------------------
 
-    /**
-     * The reason/owner pairs sp_Get_Distinct_Cancellation_Reasons offers to
-     * the cancellation block of the stage review dialogs.
-     *
-     * <p>Reason and rollback owner travel together because the owner is not a
-     * second choice: picking a reason determines it, and the dialog shows it
-     * read-only. Keeping the pairing in the procedure means a reason added in
-     * the database needs no frontend release.
-     *
-     * <p>The list is small, fixed and caller-independent, so it takes no scope
-     * parameters and the client can hold it for the session.
-     */
     public List<CancellationReasonOptionDto> getCancellationReasonOptions() {
         LOGGER.info("call sp_Get_Distinct_Cancellation_Reasons();");
 
@@ -2602,11 +2211,6 @@ public class CrqWorkflowService extends BaseService {
         return rows == null ? Collections.emptyList() : rows;
     }
 
-    /**
-     * The SIGNAL text behind a failed sp_mop_* call. Every one of them raises
-     * SQLSTATE 45000 with a sentence meant for the reviewer, but it arrives
-     * buried in the exception chain, so the chain is walked for it.
-     */
     private static String mopSignalMessage(DataAccessException e, String fallback) {
         for (Throwable t = e; t != null; t = t.getCause()) {
             String message = t.getMessage();

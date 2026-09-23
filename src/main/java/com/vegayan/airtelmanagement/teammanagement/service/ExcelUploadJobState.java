@@ -2,18 +2,12 @@ package com.vegayan.airtelmanagement.teammanagement.service;
 
 import com.vegayan.airtelmanagement.teammanagement.dto.ExcelRowResultDto;
 import com.vegayan.airtelmanagement.teammanagement.dto.ExcelValidationErrorDto;
+import lombok.Getter;
 
 import java.time.Instant;
 import java.util.List;
 
-/**
- * Live + final state for one async upload job. Exactly one background thread
- * (the job's {@code ExcelUploadAsyncRunner} execution) ever writes to an
- * instance of this class; any number of HTTP polling threads only read it -
- * so plain {@code volatile} fields give the readers a correctly up-to-date
- * view without needing AtomicInteger/CAS machinery there is no writer
- * contention to resolve.
- */
+@Getter
 public class ExcelUploadJobState {
 
     private final String uploadId;
@@ -52,29 +46,6 @@ public class ExcelUploadJobState {
     }
 
     // ── Reads (used by ExcelUploadService to build response DTOs) ──
-
-    public String getUploadId() { return uploadId; }
-    public String getFileName() { return fileName; }
-    public long getFileSizeBytes() { return fileSizeBytes; }
-    public Long getUploadedByUserId() { return uploadedByUserId; }
-    public Instant getStartedAt() { return startedAt; }
-    public UploadStatus getStatus() { return status; }
-    public String getStage() { return stage; }
-    public int getTotalRows() { return totalRows; }
-    public int getValidRows() { return validRows; }
-    public int getInvalidRows() { return invalidRows; }
-    public int getDuplicateRows() { return duplicateRows; }
-    public int getProcessedRows() { return processedRows; }
-    public int getSuccessCount() { return successCount; }
-    public int getFailureCount() { return failureCount; }
-    public int getSkippedRows() { return skippedRows; }
-    public int getCurrentBatch() { return currentBatch; }
-    public int getTotalBatches() { return totalBatches; }
-    public Long getEstimatedSecondsRemaining() { return estimatedSecondsRemaining; }
-    public Instant getCompletedAt() { return completedAt; }
-    public String getErrorMessage() { return errorMessage; }
-    public List<ExcelRowResultDto> getFinalRowResults() { return finalRowResults; }
-    public List<ExcelValidationErrorDto> getFinalValidationErrors() { return finalValidationErrors; }
 
     public boolean isTerminal() {
         return status == UploadStatus.COMPLETED

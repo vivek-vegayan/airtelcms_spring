@@ -18,14 +18,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-/**
- * CRQ Journey Explorer: search CRQs by Sub Domain, then load a single CRQ's
- * full, dynamic-length journey stage list + pending service approvals +
- * per-service SPOC contacts + org scope from sp_get_crq_journey_page, or
- * its info card + canonical 7-stage timeline from get_crq_details.
- * Deliberately kept separate from CrqWorkflowController/Service (a much
- * larger, already-working feature) to avoid touching working business logic.
- */
 @Service
 public class CrqJourneyExplorerService extends BaseService {
 
@@ -38,38 +30,6 @@ public class CrqJourneyExplorerService extends BaseService {
                 subDomainId);
     }
 
-    /**
-     * sp_get_crq_journey_page emits four result sets in one round trip: the
-     * journey stage rows, the pending CAB services with their configured
-     * approver, the SPOC recorded against every CAB service on the CRQ, and the
-     * CRQ's domain / sub-domain names.
-     * <p>
-     * The sets are located by their column labels, never by position. The
-     * procedure has been re-authored live three times - one result set until
-     * 2026-08-24, three until 2026-09-08, four since, with the new SPOC block
-     * inserted BEFORE the scope block rather than appended after it. Reading by
-     * index would have silently served SPOC rows as the org scope on that
-     * change, so this method asks each set what it is instead: a set is the
-     * SPOC set because it carries a Spoc_Name column, not because it is third.
-     * <p>
-     * A consequence worth knowing: an empty result set carries no columns and
-     * so cannot be identified. That is harmless - an empty set has nothing to
-     * map either way - but it is why a missing block yields an empty list
-     * rather than an error. The SPOC set really does come back empty for CRQs
-     * whose services predate the current CRQ_CAB_SERVICE_MASTER seed, because
-     * the procedure inner-joins that master to resolve the service name.
-     * <p>
-     * The column labels are case-sensitive: Connector/J preserves the alias
-     * casing exactly as the procedure writes it, rows are read into plain
-     * LinkedHashMaps, and the four sets do not spell their labels consistently
-     * (SHOUTING for the journey rows, Mixed_Case for the approvals and SPOCs,
-     * lower_case for the scope).
-     * <p>
-     * The procedure itself is left untouched: everything the UI needs beyond
-     * these raw columns - resolving a service CODE to its display name,
-     * collapsing repeated rows, telling a missing approver or an unrecorded
-     * SPOC apart from a sentinel row - is derived downstream rather than in SQL.
-     */
     public CrqJourneyPageDto getCrqJourneyDetails(String crqNo) {
         LOGGER.info("call sp_get_crq_journey_page('{}');", crqNo);
         List<List<Map<String, Object>>> resultSets = databaseUtils.executeProcedureAllResultSets(
@@ -90,11 +50,7 @@ public class CrqJourneyExplorerService extends BaseService {
         return new CrqJourneyPageDto(stages, pending, spocs, scope);
     }
 
-    /**
-     * The first result set that declares the given column, or an empty list.
-     * Identifying a set by a column it alone owns is what lets the mapping
-     * survive the procedure re-ordering or inserting result sets.
-     */
+
     private static List<Map<String, Object>> resultSetWithColumn(
             List<List<Map<String, Object>>> all,
             String column
@@ -122,21 +78,6 @@ public class CrqJourneyExplorerService extends BaseService {
         return dto;
     }
 
-    /**
-     * One rung of the L1/L2/L3 approval ladder, lifted out of the nine flat
-     * columns the procedure spreads it across.
-     * <p>
-     * The L1 rung carries a fallback to the unprefixed {@code Approver_Olm_Id} /
-     * {@code Approver_Name} columns, which is exactly what the procedure
-     * published before it grew the ladder on 2026-09-09: the old single approver
-     * WAS the approval-config approver, i.e. L1. A database still running that
-     * revision therefore yields a populated L1 and two empty escalation rungs,
-     * rather than an approver that silently vanishes from the UI.
-     * <p>
-     * {@code escalated} is presence-tested rather than compared to the literal
-     * 'ESCALATED': the column is NULL for every rung the approval is not
-     * currently sitting on, so any value at all means this is the live rung.
-     */
     private static CrqApproverLevelDto approverLevel(Map<String, Object> row, String level) {
         String olmId = str(row, level + "_Approver_Olm_Id");
         String name = str(row, level + "_Approver_Name");
@@ -169,13 +110,7 @@ public class CrqJourneyExplorerService extends BaseService {
         return dto;
     }
 
-    /**
-     * get_crq_details emits two result sets in one call: the info card
-     * (result set 0) and the canonical 7-stage timeline (result set 1). See
-     * db/migration/2026-07-29_crq_journey_explorer_procs.sql for the exact
-     * column aliases this method reads by (case-sensitive - MySQL Connector/J
-     * preserves the alias casing exactly as written in the proc).
-     */
+
     public CrqDetailsResponseDto getCrqDetails(String crqNo) {
         LOGGER.info("call get_crq_details('{}');", crqNo);
         List<List<Map<String, Object>>> resultSets = databaseUtils.executeProcedureAllResultSets(

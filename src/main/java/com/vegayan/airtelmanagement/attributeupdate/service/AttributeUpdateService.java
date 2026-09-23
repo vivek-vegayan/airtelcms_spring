@@ -20,26 +20,6 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.*;
 
-
-/**
- * Loads/saves the per-CRQ, per-stage attribute snapshot shown by the
- * "Attribute Update" dialog, backed by GET/INSERT_REMEDY_UPDATE_ATTR,
- * GET/INSERT_CAB_UPDATE_ATTR and GET/INSERT_CYGNET_UPDATE_ATTR.
- *
- * The GET procedures filter only by stage (Remedy/CAB) or change id
- * (Cygnet) - not by CRQ - so every row for that filter is returned and this
- * service narrows it down to the given CRQ's latest saved row (max
- * createdDate).
- *
- * Remedy and CAB are plain appends (no upsert), so repeated saves simply
- * produce a new "latest" row - a natural audit trail. Cygnet is not: despite
- * the name, INSERT_CYGNET_UPDATE_ATTR now UPDATEs the CRQ's single existing
- * CYGNET_UPDATE_ATTR_TBL row (it errors if there is none), driven entirely by
- * whichever DB column names appear as keys in the JSON it is handed. Columns
- * absent from that JSON are left alone; a key present with a null value is
- * written as SQL NULL - which is why CygnetSaveDto omits its unset fields
- * instead of serializing them as data-clearing nulls.
- */
 @Service
 @RequiredArgsConstructor
 public class AttributeUpdateService extends BaseService {
@@ -61,14 +41,7 @@ public class AttributeUpdateService extends BaseService {
         return new AttributeUpdateDetailsDto(remedy, cab, cygnet, getChangeRequestStatus(crqNo));
     }
 
-    /**
-     * The CRQ's live Remedy status, e.g. "Scheduled For Review", or null when
-     * the procedure has no row for it.
-     *
-     * GET_CHANGE_REQUEST_STATUS answers with one labelled column and one row,
-     * so it needs no DTO of its own - executeProcedureForStringList ignores the
-     * column name and hands back the values.
-     */
+
     private String getChangeRequestStatus(String crqNo) {
         LOGGER.info("call GET_CHANGE_REQUEST_STATUS('{}');", crqNo);
         List<String> rows = databaseUtils.executeProcedureForStringList(
@@ -76,33 +49,18 @@ public class AttributeUpdateService extends BaseService {
         return rows.isEmpty() ? null : rows.get(0);
     }
 
-
-    // ─── Support group cascading dropdowns ───────────────────────────────────
-    //
-    // Remedy's "Support Company / Organization / Group Name+" attributes - one
-    // trio for the Change Coordinator (ASCPY / ASORG / ASGRP), one for the
-    // Change Implementer (ChgImpCpy / ChgImpOrg / ChgImpGrp) - are a strict
-    // hierarchy: which organizations are valid depends on the chosen company,
-    // and which groups are valid on both. Each level is its own procedure
-    // returning a single label column, so the UI fetches one level at a time as
-    // the user picks rather than shipping the whole cross-product up front.
-    // Both trios draw from the same pool, so both use these same three calls.
-
-    /** Level 1: every support company. */
     public List<String> getImplCompanies() {
         LOGGER.info("call GET_IMPL_COMPANY_DROPDOWN();");
         return databaseUtils.executeProcedureForStringList(
                 jdbcTemplateTwo, "CALL GET_IMPL_COMPANY_DROPDOWN()");
     }
 
-    /** Level 2: support organizations under one company. */
     public List<String> getImplOrganizations(String company) {
         LOGGER.info("call GET_IMPL_ORG_DROPDOWN('{}');", company);
         return databaseUtils.executeProcedureForStringList(
                 jdbcTemplateTwo, "CALL GET_IMPL_ORG_DROPDOWN(?)", company);
     }
 
-    /** Level 3: support groups under one company + organization. */
     public List<String> getImplGroups(String company, String organization) {
         LOGGER.info("call GET_IMPL_GROUP_DROPDOWN('{}','{}');", company, organization);
         return databaseUtils.executeProcedureForStringList(
@@ -137,12 +95,6 @@ public class AttributeUpdateService extends BaseService {
 
         List<SectionResult> sections = new ArrayList<>();
 
-        // ---------------- Remedy ----------------
-        // Persist first, then push. Split deliberately: a section that lands in
-        // the DB but fails its downstream push is neither "updated" nor a plain
-        // failure, and reporting it as both (which is what adding to `saved`
-        // before the push did) produced self-contradicting messages like
-        // "Remedy & CAB updated. Remedy (...) & CAB (...) failed."
         if (request.getRemedy() != null) {
             sections.add(runPushSection("Remedy",
                     () -> saveRemedy(request.getCrqNo(), request.getCmsStage(), request.getRemedy()),
@@ -155,10 +107,6 @@ public class AttributeUpdateService extends BaseService {
                     () -> cabRequestService.remedyCabRequest(buildCabRequest(request))));
         }
 
-        // Cygnet is two-phase for the same reason Remedy and CAB are: the local
-        // row is written first, then the CRQ status is pushed to Cygnet
-        // (updateCRQStatusFromVegayan). A push failure leaves the saved row in
-        // place and says so, rather than reporting the section as lost.
         if (request.getCygnet() != null) {
             sections.add(runPushSection("Cygnet",
                     () -> saveCygnet(request.getCrqNo(), request.getCygnet()),
@@ -216,13 +164,6 @@ public class AttributeUpdateService extends BaseService {
         if (request.getRemedy() != null) {
             var remedy = request.getRemedy();
 
-            // Status & Dates
-            //
-            // Every date goes to Remedy through DateTimeUtils.toRemedyIst, which
-            // stamps the IST offset on: "2026-09-24T05:19:00+0530". Handing the
-            // LocalDateTime over raw let Jackson emit a bare "2026-09-24T05:19:00"
-            // with no zone for Remedy to read it in, which is how a scheduled
-            // window ends up five and a half hours from where the user put it.
             values.put("Change Request Status", remedy.getStatus());
             values.put("Business Justification", remedy.getBusinessJustification());
             values.put("Scheduled Start Date", DateTimeUtils.toRemedyIst(remedy.getScheduledStartDate()));
@@ -391,25 +332,7 @@ public class AttributeUpdateService extends BaseService {
         return cabRequestDto;
     }
 
-    /** Single-phase section: one local write, one outcome. */
-    private SectionResult runSection(String label, Runnable action) {
-        try {
-            action.run();
-            return SectionResult.builder().section(label).status("Success").build();
-        } catch (Exception e) {
-            LOGGER.error("[ATTRIBUTE UPDATE] {} save failed: {}", label, e.getMessage());
-            return SectionResult.builder()
-                    .section(label).status("Error").message(e.getMessage()).build();
-        }
-    }
 
-    /**
-     * Two-phase section: persist locally, then push downstream. Returns exactly
-     * ONE outcome - a section can never report as both saved and failed. The
-     * push is only attempted if the persist succeeded, and a push failure says
-     * so explicitly rather than implying the local write was lost too (it
-     * wasn't - it is still in the DB and will be re-pushed on the next save).
-     */
     private SectionResult runPushSection(String label, Runnable persist, Runnable push) {
         try {
             persist.run();
@@ -482,13 +405,6 @@ public class AttributeUpdateService extends BaseService {
         }
     }
 
-    /**
-     * Applies one Cygnet section to the CRQ's CYGNET_UPDATE_ATTR_TBL row.
-     *
-     * The serialized DTO is the procedure's SET clause: its JSON names are the
-     * column names, and NON_NULL inclusion means only the fields the client
-     * filled become columns to write - see CygnetSaveDto.
-     */
     private void saveCygnet(String crqNo, CygnetSaveDto d) {
         String jsonPayload;
 

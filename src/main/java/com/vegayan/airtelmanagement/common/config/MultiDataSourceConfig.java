@@ -69,12 +69,7 @@ public class MultiDataSourceConfig {
         return hikariDataSourceTwo;
     }
 
-    /**
-     * Both templates are {@link LoggingJdbcTemplate}s, so every statement run
-     * against either data source is logged as a runnable SQL line with its
-     * bound arguments filled in. The label distinguishes the two in the log,
-     * since the same procedure name can exist in both schemas.
-     */
+
     @Bean(name = "jdbcTemplateOne")
     public JdbcTemplate jdbcTemplateOne(@Qualifier("dataSourceOne") DataSource dataSource) {
         return new LoggingJdbcTemplate(dataSource, "DB1");

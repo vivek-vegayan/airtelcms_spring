@@ -7,27 +7,6 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-/**
- * Row returned by GET_CYGNET_DETAILS_BY_CHANGE_ID (CYGNET_UPDATE_ATTR_TBL).
- *
- * CYGNET_UPDATE_ATTR_TBL names its columns after the Remedy attributes they
- * mirror - "Infrastructure Change ID", "Impacted Circle(s)", "Type of CR",
- * "ChgImpCpy", "cms_stage" - rather than in the camelCase the Remedy and CAB
- * attribute tables use. Two consequences shape this DTO:
- *
- * <ul>
- *   <li>The JSON names are those column names verbatim (@JsonProperty), the
- *       same convention RemedyCabRequestValues and CrqStatusUpdateDto already
- *       follow. That keeps one vocabulary across the DB, this response and the
- *       INSERT_CYGNET_UPDATE_ATTR payload that CygnetSaveDto produces - which
- *       matters because that procedure matches its JSON keys against the column
- *       names, so the save side has no choice but to spell them this way.</li>
- *   <li>BeanPropertyRowMapper cannot fill it: it matches a column by lowercasing
- *       the label and deleting spaces, and no Java identifier can come out as
- *       "impactedcircle(s)". The rows are mapped column by column instead - see
- *       AttributeUpdateService#CYGNET_ROW_MAPPER.</li>
- * </ul>
- */
 @Getter
 @Setter
 public class CygnetAttrDto {

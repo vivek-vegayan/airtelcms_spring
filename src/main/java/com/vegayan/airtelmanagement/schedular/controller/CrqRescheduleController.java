@@ -10,19 +10,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * REST surface of the CRQ Reschedule wizard, one endpoint per
- * CRQ_SP_RESCHEDULE_* procedure (see db/migration/2026-07-16_crq_reschedule_module.sql,
- * 2026-07-28_crq_reschedule_wizard.sql and 2026-07-28_crq_reschedule_apis.sql).
- *
- * Sits alongside the existing CRQ workflow (CrqWorkflowController) and the
- * scheduling engine without altering either: every stage change, reservation
- * and history row is written by the procedures themselves.
- *
- * The acting user is never taken from the request body - `requestedBy` /
- * `performedBy` are resolved from the authenticated principal, so a caller
- * cannot attribute a reschedule to someone else.
- */
 @RestController
 @RequestMapping("/crq/reschedule")
 public class CrqRescheduleController {
@@ -37,19 +24,16 @@ public class CrqRescheduleController {
         return authentication == null ? null : Long.valueOf(authentication.getName());
     }
 
-    /** Step 1 (read): current stage/engineer/schedule, reschedule count, eligible target stages. */
     @GetMapping("/context")
     public RescheduleContextResponseDto getContext(@RequestParam Long crqId) {
         return crqRescheduleService.getContext(crqId);
     }
 
-    /** Step 1 (read): the fixed reason list from sp_reschedule_reason_drop_down. */
     @GetMapping("/reason-options")
     public List<RescheduleReasonOptionDto> getReasonOptions() {
         return crqRescheduleService.getReasonOptions();
     }
 
-    /** Step 1: gate on reschedule_count/blocked, create the attempt, return the calendar. */
     @Auditable(module = AuditModule.SCHEDULER,
                subModule = AuditModule.SUB_CRQ_RESCHEDULE,
                action = AuditAction.RESCHEDULE,
@@ -62,19 +46,16 @@ public class CrqRescheduleController {
         return crqRescheduleService.initiate(actorId(authentication), request);
     }
 
-    /** Step 2 (Refresh): recompute the predicted calendar for an existing attempt. */
     @GetMapping("/{rescheduleId}/calendar")
     public RescheduleCalendarResponseDto getCalendar(@PathVariable Long rescheduleId) {
         return crqRescheduleService.getCalendar(rescheduleId);
     }
 
-    /** Step 2: persist the user's chosen desired date. */
     @PostMapping("/save-date")
     public RescheduleStatusResponseDto saveDate(@RequestBody RescheduleSaveDateRequest request) {
         return crqRescheduleService.saveDate(request);
     }
 
-    /** Step 3: move the CRQ to the target stage and return the recomputed engineer slots. */
     @Auditable(module = AuditModule.SCHEDULER,
                subModule = AuditModule.SUB_CRQ_RESCHEDULE,
                action = AuditAction.RESCHEDULE,
@@ -87,13 +68,11 @@ public class CrqRescheduleController {
         return crqRescheduleService.moveStage(actorId(authentication), request);
     }
 
-    /** Step 4 (Refresh): re-cut the offered engineer slots without repeating earlier steps. */
     @GetMapping("/{rescheduleId}/slots")
     public RescheduleSlotsResponseDto getSlots(@PathVariable Long rescheduleId) {
         return crqRescheduleService.getSlots(rescheduleId);
     }
 
-    /** Step 5: confirm the chosen slot and update schedule/workflow/assignment/history. */
     @Auditable(module = AuditModule.SCHEDULER,
                subModule = AuditModule.SUB_CRQ_RESCHEDULE,
                action = AuditAction.RESCHEDULE,
@@ -106,7 +85,6 @@ public class CrqRescheduleController {
         return crqRescheduleService.confirmSlot(actorId(authentication), request);
     }
 
-    /** Abandon an in-flight reschedule attempt. Valid until the slot is confirmed. */
     @Auditable(module = AuditModule.SCHEDULER,
                subModule = AuditModule.SUB_CRQ_RESCHEDULE,
                action = AuditAction.CANCEL,

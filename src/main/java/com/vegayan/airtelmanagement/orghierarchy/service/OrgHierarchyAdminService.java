@@ -18,14 +18,6 @@ import org.springframework.stereotype.Service;
 import java.sql.CallableStatement;
 import java.sql.Types;
 
-/**
- * Organization Configuration (Global Settings) admin CRUD for the
- * Vertical -&gt; Team Function -&gt; Domain -&gt; Sub Domain hierarchy.
- *
- * ORG_VERTICAL / ORG_FUNCTION / ORG_DOMAIN / ORG_SUB_DOMAIN live on
- * jdbcTemplateOne (the primary datasource) - NOT jdbcTemplateTwo, which is
- * what the sibling {@code globalsettings} RBAC package uses.
- */
 @Service
 public class OrgHierarchyAdminService extends BaseService {
 

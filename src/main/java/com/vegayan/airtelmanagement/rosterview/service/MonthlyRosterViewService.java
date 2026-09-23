@@ -20,9 +20,6 @@ import java.util.Map;
 @Service
 public class MonthlyRosterViewService extends BaseService {
 
-    /**
-     * Monthly / Weekly Roster View
-     */
     public MonthlyRosterResponseDto getRosterMonthlyAndWeekly(
             Long domainId,
             Long subDomainId,
@@ -59,9 +56,7 @@ public class MonthlyRosterViewService extends BaseService {
         );
     }
 
-    /**
-     * Logged-in User Roster View
-     */
+
     public MonthlyRosterResponseDto getActorRoster(
             String userId,
             LocalDate startDate,
@@ -95,9 +90,7 @@ public class MonthlyRosterViewService extends BaseService {
         );
     }
 
-    /**
-     * Build Monthly / Weekly Response
-     */
+
     private MonthlyRosterResponseDto buildResponseMonthlyAndWeekly(
             List<RosterRowDto> rows,
             LocalDate startDate,
@@ -193,9 +186,6 @@ public class MonthlyRosterViewService extends BaseService {
         return response;
     }
 
-    /**
-     * Current Shift Count
-     */
     public List<CurrentShiftCountDto> getCurrentShiftCount(
             String domainId,
             String subDomainId
@@ -219,9 +209,6 @@ public class MonthlyRosterViewService extends BaseService {
         );
     }
 
-    /**
-     * Change Shift
-     */
     public ApiResponse changeShift(
             Long actorUserId,
             Long affectedUserId,
@@ -259,9 +246,6 @@ public class MonthlyRosterViewService extends BaseService {
         );
     }
 
-    /**
-     * Shift Dropdown
-     */
     public List<ShiftDropDownsDto> shiftDropDowns() {
 
         String sql =
@@ -278,9 +262,7 @@ public class MonthlyRosterViewService extends BaseService {
         );
     }
 
-    /**
-     * Manager Shift Swap
-     */
+
     public ApiResponse shiftSwapByManager(
             String actorUserId,
             Long affectedUserId1,
@@ -315,9 +297,6 @@ public class MonthlyRosterViewService extends BaseService {
         );
     }
 
-    /**
-     * Team Member Shift Swap Request
-     */
     public ApiResponse shiftSwapReqByTeamMember(
             String actorUserId,
             LocalDate shiftDate1,

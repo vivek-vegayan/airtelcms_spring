@@ -63,7 +63,6 @@ public class CabCrqController {
             Authentication authentication,
             @RequestParam(required = false) String role) {
         Long actorUserId = Long.valueOf(authentication.getName());
-//        Long actorUserId = 2L;
         return cabCrqService.getMyCrqs(actorUserId, role);
     }
 
@@ -72,21 +71,10 @@ public class CabCrqController {
         return cabCrqService.getAllCrqById(serviceApprovalId);
     }
 
-    /**
-     * Row detail for a My CRQs row. Keyed on Service_Approval_Id
-     * (CRQ_CAB_SERVICE_TBL.Id) - the id the list proc emits - not on the CRQ
-     * number, matching sp_get_cab_my_crq_by_id.
-     */
     @GetMapping("/mine/{serviceApprovalId}")
     public MyCrqDetailDto getMyCrqById(@PathVariable Long serviceApprovalId) {
         return cabCrqService.getMyCrqById(serviceApprovalId);
     }
-
-//    @GetMapping("/{crqId}/journey")
-//    public CrqJourneyDto getCrqJourney(@PathVariable String crqId) {
-//        return cabCrqService.getCrqJourney(crqId);
-//    }
-
 
 
     // ── WORKFLOW ACTIONS ────────────────────────────────────────────────────
@@ -250,11 +238,6 @@ public class CabCrqController {
 
     // ── SPOC / FIELD ENGINEER DETAILS ───────────────────────────────────────
 
-    /**
-     * 204 rather than 404 when nobody is assigned: the CRQ itself exists, it
-     * simply has no assignment row yet, and the client shows that as an empty
-     * state instead of an error banner.
-     */
     @GetMapping("/{crqNo}/spoc-fe-details")
     public ResponseEntity<SpocFeDetailsDto> getSpocFeDetails(@PathVariable String crqNo) {
         SpocFeDetailsDto details = cabCrqService.getSpocFeDetails(crqNo);
@@ -283,7 +266,7 @@ public class CabCrqController {
         return ResponseEntity.ok(response);
     }
 
-    /** Blank-or-whitespace reads as "not supplied" for the mandatory SPOC fields. */
+
     private static String trimToNull(String value) {
         if (value == null) {
             return null;

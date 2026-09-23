@@ -12,22 +12,6 @@ import java.time.LocalDate;
 @Getter
 @Setter
 public class EmployeeCreateRequestDto extends CommonEmployeeCreateRequestDto{
-//
-//    @NotNull(message = "Actor user id is required")
-//    private Long actorUserId;
-
-//    @NotBlank(message = "OLM ID is required")
-//    private String olmid;
-//
-//    @NotBlank(message = "Employee name is required")
-//    private String employeeName;
-//
-//    @Email(message = "Invalid email format")
-//    @NotBlank(message = "Email ID is required")
-//    private String emailId;
-//
-//    @NotBlank(message = "Mobile number is required")
-//    private String mobileNo;
 
     @NotBlank(message = "Employment type is required")
     private String employmentType;
@@ -58,15 +42,6 @@ public class EmployeeCreateRequestDto extends CommonEmployeeCreateRequestDto{
 
     @NotNull(message = "Sub Domain ID is required")
     private Integer subDomainId;
-//
-//    @NotNull(message = "Role Code is required")
-//    private String roleCode;
-
-
-
-
-
-
 
 
 

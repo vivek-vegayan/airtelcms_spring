@@ -32,7 +32,6 @@ public class EmployeeExcelService extends BaseService {
     private static final String UPLOAD_SHEET_NAME         = "Employee_Upload";
     private static final String MASTER_SHEET_NAME         = "MASTER_DATA";
 
-    /** Shared with {@link ExcelMasterDataCache} so validation checks the same list used for the template dropdown. */
     public static final List<String> GENDER_OPTIONS = List.of("Male", "Female", "Other");
 
     // ─── Column definition record ─────────────────────────────────────────────
@@ -48,16 +47,6 @@ public class EmployeeExcelService extends BaseService {
     private enum ColType { TEXT, DATE, DROPDOWN, FORMULA_DROPDOWN }
 
     // ─── MASTER_DATA layout constants ────────────────────────────────────────
-    // Flat lists occupy columns 0‒7; hierarchy starts at col 20 (HIERARCHY_START_COL).
-    // After the flat lists we leave cols 8‒19 empty as a visual separator.
-    //
-    // Hierarchy column layout (starting at col 20):
-    //   col 20 : Vertical_List  (flat list of all verticals)
-    //   col 21+: one column per Vertical  → its Functions
-    //   then  : one column per Function   → its Domains
-    //   then  : one column per Domain     → its SubDomains
-    //
-    // These are also used for the MASTER_DATA "edit here" area that users see.
 
     public EmployeeExcelService(TeamOverviewService teamOverviewService) {
         this.teamOverviewService = teamOverviewService;
@@ -459,12 +448,6 @@ public class EmployeeExcelService extends BaseService {
     private static final String CREATE_USER_EXCEL_SQL =
             "CALL sp_create_user_excel_sheet(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
-    /**
-     * Whole-file, single-transaction path. Kept for backward compatibility
-     * (nothing outside this class calls it, but its behavior/signature/output
-     * are preserved byte-for-byte). Prefer {@link #createEmployeesBatch} via
-     * an external batch processor for large files.
-     */
     @Transactional
     public List<ExcelRowResultDto> batchCreateEmployees(
             Long actorUserId, List<EmployeeExcelRowDto> excelRows) {
@@ -476,19 +459,7 @@ public class EmployeeExcelService extends BaseService {
         return results;
     }
 
-    /**
-     * Runs one chunk of rows in its OWN transaction, independent of any
-     * caller-level transaction (REQUIRES_NEW). Must be invoked from a
-     * different Spring bean than this one (e.g. EmployeeExcelBatchProcessor)
-     * for the propagation to take effect — a call via {@code this.} inside
-     * EmployeeExcelService would bypass the transactional proxy.
-     * <p>
-     * Per-row failures are already caught and converted to a FAILED result
-     * inside {@link #createSingleEmployeeRow}, so they never trigger this
-     * transaction's rollback — REQUIRES_NEW here is a safety net for
-     * non-row-scoped failures (dropped connection, deadlock, DB restart
-     * mid-batch), bounding the blast radius to at most one batch of rows.
-     */
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public List<ExcelRowResultDto> createEmployeesBatch(
             Long actorUserId, List<EmployeeExcelRowDto> batchRows, int startingRowNumber) {
@@ -500,12 +471,6 @@ public class EmployeeExcelService extends BaseService {
         return results;
     }
 
-    /**
-     * The ONLY place sp_create_user_excel_sheet is invoked. Same SQL, same
-     * 19-parameter order, same password-encoding and result handling as the
-     * original inline loop body - extracted verbatim so it can be shared by
-     * both the legacy whole-file path and the new per-batch path.
-     */
     private ExcelRowResultDto createSingleEmployeeRow(Long actorUserId, int rowNumber, EmployeeExcelRowDto row) {
         try {
             String encryptedPassword = passwordEncoder.encode(row.getOlmid());

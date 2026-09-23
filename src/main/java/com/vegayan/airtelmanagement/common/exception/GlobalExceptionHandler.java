@@ -21,16 +21,6 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    /**
-     * Bean-validation failures on an {@code @Valid @RequestBody}.
-     *
-     * Without this, {@code MethodArgumentNotValidException} fell through to the
-     * catch-all {@code Exception} handler at the bottom, which answered 500 with
-     * {@code ex.getMessage()} - the full framework string ("Validation failed for
-     * argument [0] in public ... with 2 errors: [Field error in object '...' on
-     * field 'gender': rejected value [null]; codes [...]") - and the UI dropped
-     * that whole thing into a toast. Answer 400 with just the field messages.
-     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse> handleValidationException(MethodArgumentNotValidException ex,
                                                                  HttpServletRequest request) {
@@ -59,7 +49,6 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 
-    /** "Email: Invalid email format" - readable enough to show verbatim in a toast. */
     private static String describeFieldError(FieldError error) {
 
         String field = error.getField();
@@ -118,14 +107,7 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 
-    /**
-     * A stage outcome the stored procedure refused (CAB pending, Ops task
-     * still open, CRQ already moved on, ...). Nothing was written, so this
-     * must never look like a success. Declared separately from
-     * {@link BusinessException} - which it extends - so the machine
-     * {@code code}/{@code hint} reach the UI and the status can be 404 when
-     * the CRQ itself is gone.
-     */
+
     @ExceptionHandler(StageActionBlockedException.class)
     public ResponseEntity<StageActionErrorResponse> handleStageActionBlockedException(
             StageActionBlockedException ex,
@@ -172,17 +154,6 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 
-    /**
-     * A procedure that raises `SIGNAL SQLSTATE '45000'` is stating a business
-     * rule ("this reason already exists"), not crashing. Spring wraps that in an
-     * UncategorizedSQLException whose message buries the rule under JDBC
-     * plumbing - "CallableStatementCallback; uncategorized SQLException; SQL
-     * state [45000]; error code [1644]; ..." - and the catch-all below used to
-     * pass that whole string to the UI, where it landed in a toast verbatim.
-     *
-     * Unwrap to the SIGNAL text and answer 409 so callers can show it as-is.
-     * Every other data-access failure keeps the previous behaviour.
-     */
     @ExceptionHandler(DataAccessException.class)
     public ResponseEntity<ApiResponse> handleDataAccessException(DataAccessException ex,
                                                                  HttpServletRequest request) {
@@ -222,10 +193,8 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 
-    /** The SQLSTATE MySQL reserves for a user-raised SIGNAL. */
     private static final String SIGNAL_SQL_STATE = "45000";
 
-    /** Walks the cause chain for a proc's deliberate SIGNAL, or null if none. */
     private static SQLException findSignalException(Throwable ex) {
 
         for (Throwable cause = ex; cause != null; cause = cause.getCause()) {

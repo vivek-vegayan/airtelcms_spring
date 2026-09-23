@@ -166,11 +166,6 @@ public class CRQAnalyticsDashboardController {
         return dashboardService.getRunRateViewAll(startDate, endDate, teamFunctionId, domainId, subDomainId,circleId, page, size);
     }
 
-    /**
-     * GET /crq-analytics/crqs
-     * LAZY — called only when the full-screen table opens.
-     * Supports status / stage / rejectionReason filters + pagination.
-     */
     @GetMapping("/crqs")
     public CRQListResponse getCrqList(
             @RequestParam String startDate,
@@ -190,11 +185,6 @@ public class CRQAnalyticsDashboardController {
                 status, stage, rejectionReason, page, size);
     }
 
-    /**
-     * GET /crq-analytics/crqs/{changeId}
-     * LAZY — called only when a CRQ row is clicked.
-     * Returns full journey: timeline, approval trail, event feed.
-     */
     @GetMapping("/crqs/{changeId}")
     public CRQDetailResponse getCrqDetail(@PathVariable String changeId) {
         return detailService.getCrqDetail(changeId);

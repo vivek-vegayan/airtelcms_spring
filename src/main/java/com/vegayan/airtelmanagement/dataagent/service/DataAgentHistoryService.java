@@ -8,11 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-/**
- * Thin orchestration over DataAgentHistoryRepository - every guard (missing
- * question, ownership check on delete) lives in the SP_DATAAGENT_* procedures
- * themselves, this layer only translates the answer into the HTTP response.
- */
+
 @Service
 public class DataAgentHistoryService extends BaseService {
 

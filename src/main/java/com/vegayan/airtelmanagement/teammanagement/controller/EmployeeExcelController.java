@@ -34,11 +34,7 @@ public class EmployeeExcelController {
         this.excelUploadService = excelUploadService;
     }
 
-    /**
-     * Download the Excel template pre-filled with dropdown data.
-     */
-    // A GET that hands over a file, not one that renders a screen - see the
-    // MOP download on CrqWorkflowController for the same distinction.
+
     @Auditable(module = AuditModule.USER_MANAGEMENT,
                subModule = AuditModule.SUB_EMPLOYEE_UPLOAD,
                action = AuditAction.DOWNLOAD,
@@ -62,12 +58,6 @@ public class EmployeeExcelController {
                              .body(out.toByteArray());
     }
 
-    /**
-     * Upload an Excel file and create employees from it (synchronous - blocks
-     * until the whole file is processed). Response shape is unchanged; rows
-     * are now validated in memory and DB-processed in configurable batches
-     * before returning.
-     */
     @Auditable(module = AuditModule.USER_MANAGEMENT,
                subModule = AuditModule.SUB_EMPLOYEE_UPLOAD,
                action = AuditAction.UPLOAD,
@@ -82,9 +72,6 @@ public class EmployeeExcelController {
         return ResponseEntity.ok(result);
     }
 
-    /**
-     * Accept pre-parsed rows (JSON) and batch-create employees (synchronous).
-     */
     @Auditable(module = AuditModule.USER_MANAGEMENT,
                subModule = AuditModule.SUB_EMPLOYEE_UPLOAD,
                action = AuditAction.UPLOAD,
@@ -99,12 +86,6 @@ public class EmployeeExcelController {
         return ResponseEntity.ok(result);
     }
 
-    /**
-     * Upload an Excel file for ASYNCHRONOUS processing. Returns an upload id
-     * immediately; the file is parsed/validated/batch-processed on a
-     * background thread. Poll {@code GET /v1/upload/{uploadId}/status} for
-     * progress, then fetch {@code /result} and/or {@code /error-report}.
-     */
     @Auditable(module = AuditModule.USER_MANAGEMENT,
                subModule = AuditModule.SUB_EMPLOYEE_UPLOAD,
                action = AuditAction.UPLOAD,

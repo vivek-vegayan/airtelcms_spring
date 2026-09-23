@@ -25,7 +25,6 @@ public class FileStorageController {
 
     private final FileStorageService fileStorageService;
 
-    /** Upload a file */
     @PostMapping("/upload")
     public ResponseEntity<?> uploadFile(
             @RequestParam("file") MultipartFile file,
@@ -41,14 +40,12 @@ public class FileStorageController {
         }
     }
 
-    /** List all uploaded files */
     @GetMapping("/list")
     public ResponseEntity<List<Map<String, String>>> listFiles() {
         List<Map<String, String>> files = fileStorageService.listFiles();
         return ResponseEntity.ok(files);
     }
 
-    /** Download a file */
     @GetMapping("/download/{fileName}")
     public ResponseEntity<?> downloadFile(@PathVariable String fileName) {
         try {
@@ -68,7 +65,6 @@ public class FileStorageController {
         }
     }
 
-    /** Delete a file */
     @DeleteMapping("/delete/{fileName}")
     public ResponseEntity<?> deleteFile(@PathVariable String fileName) {
         try {

@@ -5,10 +5,6 @@ import com.vegayan.airtelmanagement.teammanagement.dto.ExcelValidationErrorDto;
 
 import java.util.List;
 
-/**
- * Result of validating a parsed Excel row list against mandatory-field,
- * duplicate, dropdown and hierarchy rules, BEFORE any DB call is made.
- */
 public record ExcelValidationResult(
         List<EmployeeExcelRowDto> validRows,
         List<ExcelValidationErrorDto> invalidRows,

@@ -33,23 +33,12 @@ public class CabSessionController {
         return cabSessionService.getCabSessions();
     }
 
-    /**
-     * The agenda board for one session - the CRQs tabled at it and the decision
-     * standing against each. Empty until the CAB Engineer adds CRQs.
-     */
     @GetMapping("/{sessionId}/agenda")
     public List<CabAgendaRowDto> getCabSessionAgenda(@PathVariable String sessionId) {
         return cabSessionService.getCabSessionAgenda(sessionId);
     }
 
-    /**
-     * Records the CAB's decision - APPROVE / REJECT / RESCHEDULE - on one CRQ
-     * tabled at a session.
-     *
-     * <p>Addressed by the agenda mapping id rather than the CRQ number, because
-     * the same CRQ may be tabled again later and each sitting keeps its own
-     * decision.
-     */
+
     @Auditable(module = AuditModule.CAB_MANAGER,
                subModule = AuditModule.SUB_CAB_SESSION,
                // APPROVE and REJECT resolve from the body; RESCHEDULE has no
@@ -68,7 +57,6 @@ public class CabSessionController {
         return cabSessionService.recordCrqDecision(mappingId, body, actorUserId);
     }
 
-    /** Adds further CRQs to a session whose agenda is already open. */
     @Auditable(module = AuditModule.CAB_MANAGER,
                subModule = AuditModule.SUB_CAB_SESSION,
                action = AuditAction.UPDATE,
@@ -83,11 +71,7 @@ public class CabSessionController {
         return cabSessionService.addCrqsToSession(sessionId, body, actorUserId);
     }
 
-    /**
-     * Whether the given slot already has a CAB session, and what it holds - the
-     * planner calls this before POSTing so the CRQs can join the existing session
-     * on its own link. date is yyyy-MM-dd, time is HH:mm:ss.
-     */
+
     @GetMapping("/conflict")
     public CabPlanConflictDto checkPlanConflict(
             @RequestParam String date,

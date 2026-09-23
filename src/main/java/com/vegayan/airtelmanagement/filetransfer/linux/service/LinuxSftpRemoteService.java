@@ -20,19 +20,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Vector;
 
-/**
- * Talks to a remote Linux server over SFTP (SSH) using JSch, for the
- * remote /tmp list / upload / download flows of the Linux SFTP Management
- * module. Deliberately stateless: every call takes the connection details
- * (host/port/username/password) from the request, opens a fresh session,
- * performs the one operation, and always disconnects in a finally block —
- * no session pooling, no server-side credential caching.
- *
- * Host key verification is relaxed (StrictHostKeyChecking=no) so it works
- * against ad-hoc internal hosts without a pre-seeded known_hosts file. If
- * these remote servers are reachable from an untrusted network, switch this
- * to load a known_hosts file instead (session.setKnownHosts(path)).
- */
 @Service
 public class LinuxSftpRemoteService {
 
@@ -41,9 +28,7 @@ public class LinuxSftpRemoteService {
 
     @Autowired
     private AppPropertiesConfig config;
-
-    /** Uploads a freshly-picked file straight into the remote /tmp directory — no local staging involved — then returns the resulting listing. */
-    public List<RemoteFileDto> uploadFileAndList(SftpConnectionRequestDto conn, MultipartFile file) {
+     public List<RemoteFileDto> uploadFileAndList(SftpConnectionRequestDto conn, MultipartFile file) {
         Session session = null;
         ChannelSftp channel = null;
         try {
@@ -70,7 +55,6 @@ public class LinuxSftpRemoteService {
         }
     }
 
-    /** Lists the remote server's /tmp directory. */
     public List<RemoteFileDto> listRemoteDir(SftpConnectionRequestDto conn) {
         Session session = null;
         ChannelSftp channel = null;
@@ -87,7 +71,6 @@ public class LinuxSftpRemoteService {
         }
     }
 
-    /** Deletes a single file from the remote /tmp directory, then returns the resulting listing. */
     public List<RemoteFileDto> deleteFileAndList(SftpConnectionRequestDto conn, String remoteFileName) {
         Session session = null;
         ChannelSftp channel = null;
@@ -114,7 +97,6 @@ public class LinuxSftpRemoteService {
         }
     }
 
-    /** Downloads a single file's bytes from the remote /tmp directory. */
     public byte[] downloadRemoteFile(SftpConnectionRequestDto conn, String remoteFileName) {
         Session session = null;
         ChannelSftp channel = null;

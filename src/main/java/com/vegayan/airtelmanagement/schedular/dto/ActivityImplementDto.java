@@ -13,7 +13,6 @@ public class ActivityImplementDto extends BaseCrqDto {
     private LocalDateTime executionStartDate;
     private LocalDateTime executionEndDate;
 
-    // CRQ_STAGE_ASSIGN_TBL fields returned by Get_Activity_Implement_Details
     private LocalDateTime executionAssignedStart;
     private LocalDateTime executionAssignedEnd;
     private String        executionPerformedBy;

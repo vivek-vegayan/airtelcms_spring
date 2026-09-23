@@ -6,10 +6,6 @@ import lombok.Setter;
 
 import java.util.List;
 
-/**
- * Combined response for GET /crqworkflow/journey-explorer/{crqNo}/details -
- * both result sets of get_crq_details in one payload.
- */
 @Getter
 @Setter
 @AllArgsConstructor

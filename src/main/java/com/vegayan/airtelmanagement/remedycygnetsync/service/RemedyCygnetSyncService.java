@@ -16,32 +16,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * Pushes each queued CRQ's scheduled window into Remedy.
- *
- * One cycle:
- *   1. get_remedy_cygnet_crq()            - the queue
- *   2. remedyChangeRequest(...)           - push start/end dates, one CRQ at a time
- *   3. update_remedy_cygnet_crq(crq_no)   - mark it status = 'DONE'
- *
- * A CRQ that fails is never marked, so it stays PENDING and the next cycle
- * retries it. That is also why one failure does not stop the loop.
- */
 @Service
 @RequiredArgsConstructor
 public class RemedyCygnetSyncService extends BaseService {
 
     private final ChangeRequestService changeRequestService;
 
-    /** Only one cycle runs at a time - the scheduled job and /run share this. */
     private final AtomicBoolean running = new AtomicBoolean(false);
 
-    /**
-     * Set remedy.cygnet-sync.push-enabled=false on a local machine, which cannot
-     * reach Remedy. The cycle still reads the queue and still marks each CRQ
-     * DONE - only the Remedy call itself is skipped, and the payload that would
-     * have gone is logged instead. Left true so production pushes normally.
-     */
+
     @Value("${remedy.cygnet-sync.push-enabled:true}")
     private boolean pushEnabled;
 
@@ -104,27 +87,19 @@ public class RemedyCygnetSyncService extends BaseService {
         return result(status, message, queued.size(), pushed, failed);
     }
 
-    /** The queue, without pushing anything. */
     public List<RemedyCygnetCrqDto> fetchQueuedCrqs() {
         crqScheduleReschedule.info("call get_remedy_cygnet_crq();");
         return databaseUtils.executeProcedureGetDataWithError(
                 jdbcTemplateTwo, "CALL get_remedy_cygnet_crq()", RemedyCygnetCrqDto.class);
     }
 
-    /** Marks one CRQ status = 'DONE' so the next cycle skips it. */
     public ApiResponse markDone(String crqNo) {
         crqScheduleReschedule.info("call update_remedy_cygnet_crq('{}');", crqNo);
         return databaseUtils.executeProcedureForMessageV1(
                 jdbcTemplateTwo, "call update_remedy_cygnet_crq(?)", crqNo);
     }
 
-    /**
-     * One Change_Interface update carrying just the scheduled window.
-     *
-     * z1D_Action is what tells Helix to update the existing change rather than
-     * create one - every other change push here sets it too. A null date is
-     * left out rather than sent as null, which Remedy would read as "clear it".
-     */
+
     @LogType("Schedule_Reschedule_Crq")
     private void pushToRemedy(RemedyCygnetCrqDto crq) {
 

@@ -24,12 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * Front door for the Excel bulk-upload pipeline. Both the legacy synchronous
- * endpoints and the new async endpoint funnel through the same
- * validate → batch-process steps, so they share identical pre-DB validation
- * and chunked-transaction behavior; only the synchronous/async wrapping differs.
- */
 @Service
 public class ExcelUploadService {
 
@@ -108,7 +102,6 @@ public class ExcelUploadService {
                 file.getOriginalFilename(), file.getSize(), rows.size());
     }
 
-    /** Runs on the excelUploadExecutor background thread. */
     void runPipeline(String uploadId, Long actorUserId, List<EmployeeExcelRowDto> rows) {
         ExcelUploadJobState job = jobStore.get(uploadId);
         long freeMemBeforeMb = Runtime.getRuntime().freeMemory() / (1024 * 1024);

@@ -15,13 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Export Excel in the CAB All-CRQs drawer.
- *
- * <p>One round trip: run getCSVasperService.py for this CRQ + service and
- * stream the resulting workbook back. Nothing is stored server-side, so there
- * is no generate-then-fetch step for the client to coordinate.
- */
 @RestController
 @RequestMapping("/cab/crqs")
 @RequiredArgsConstructor

@@ -6,9 +6,6 @@ import lombok.Setter;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 
-/**
- * Maps to sp_get_user_profile() result-set-1 columns.
- */
 @Getter
 @Setter
 public class UserProfileModel {

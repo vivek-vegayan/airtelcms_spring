@@ -10,8 +10,6 @@ import java.time.LocalDate;
 public class UpcomingHolidayDto {
 
     private LocalDate holidayDate;
-
     private String holidayDay;
-
     private String holidayOccasion;
 }

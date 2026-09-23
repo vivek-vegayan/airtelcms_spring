@@ -39,8 +39,7 @@ public class AppPropertiesConfig {
     private String SSH_PASSWORD;
     private String SSH_SCRIPT_PATH;
     private String SSH_REFETCH_CHECKPOINT_SCRIPT_PATH;
-    // getCSVasperService.py - prints the per-service impacted-circuit rows for one
-    // CRQ to stdout, "^"-delimited. Backs the CAB All-CRQs drawer Export Excel.
+
     private String SSH_SERVICE_CSV_SCRIPT_PATH = "/home/vegayan/getCSVasperService.py";
     private String SSH_SHIFT_GEN_VAL_SCRIPT_PATH;
     private String SSH_PDF_VIEW_DOWNLOAD_PATH;
@@ -71,8 +70,7 @@ public class AppPropertiesConfig {
     private String SFTP_LOCAL_PATH_LIN = "/home/vegayan/simplus/sftp_uploads";
     private String SFTP_LOCAL_PATH = "D:\\Vivek\\Windows SFTP";
 
-    // Remote directory used for the Linux SFTP module's list / upload /
-    // download flows against a remote host's /tmp over SFTP.
+
     private String SFTP_LINUX_REMOTE_DIR = "/tmp";
 
     private String PYTHON_SERVER_URL;

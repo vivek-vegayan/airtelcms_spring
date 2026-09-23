@@ -120,11 +120,6 @@ public class ActivityService extends BaseService {
         return dto;
     }
 
-    private Integer toInt(Object val) {
-        if (val == null) return 0;
-        return ((Number) val).intValue();
-    }
-
     private String mapPhaseKey(String dbPhase) {
 
         if (dbPhase == null) return null;

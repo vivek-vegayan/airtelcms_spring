@@ -44,8 +44,6 @@ public class RemedyService extends BaseService {
 
         try {
             crqUpdateToChm.info("Call SP_INSERT_REMEDY_CHANGE_INFO_TBL : {}", requestJson);
-//            crqUpdateToChm.info("Call SP_INSERT_REMEDY_CHANGE_INFO_TBL('{}')", requestJson);
-
             String sql = "CALL SP_INSERT_REMEDY_CHANGE_INFO_TBL(?)";
 
             ApiResponse apiResponse = databaseUtils.executeProcedureForMessageV1(

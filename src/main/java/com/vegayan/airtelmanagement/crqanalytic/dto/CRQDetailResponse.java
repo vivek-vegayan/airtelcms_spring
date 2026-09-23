@@ -23,8 +23,6 @@ public class CRQDetailResponse {
     @JsonProperty("progressPct")
     private Integer progressPct = 0;
 
-
-
     private String  lastUpdated;
     private String  status;
 

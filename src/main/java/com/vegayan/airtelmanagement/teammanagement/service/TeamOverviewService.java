@@ -15,7 +15,6 @@ import com.vegayan.airtelmanagement.teammanagement.model.UserPermissionModel;
 import com.vegayan.airtelmanagement.teammanagement.model.UserProfileModel;
 import com.vegayan.airtelmanagement.user.dto.CommonEmployeeCreateRequestDto;
 import com.vegayan.airtelmanagement.user.dto.EmployeeCreateRequestDto;
-import com.vegayan.airtelmanagement.user.service.UserService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.CallableStatementCallback;
@@ -34,12 +33,6 @@ import static com.vegayan.airtelmanagement.common.service.CommonService.formatPr
 
 @Service
 public class TeamOverviewService extends BaseService {
-
-    private final UserService userService;
-
-    public TeamOverviewService(UserService userService) {
-        this.userService = userService;
-    }
 
     // ─────────────────────────────────────────────
     // Employee count
@@ -171,17 +164,6 @@ public class TeamOverviewService extends BaseService {
         return confirmedSuccess(procedureName, dbResponse, "The user could not be created");
     }
 
-    /**
-     * Turns a procedure's reply into an {@link ApiResponse}, refusing to call
-     * silence a success.
-     *
-     * A procedure that returns neither {@code success_message} nor
-     * {@code error_message} - an {@code EXIT HANDLER FOR SQLEXCEPTION} with an
-     * empty body swallowing the real fault, say - used to arrive here as a null
-     * message wrapped in {@code status: "Success"}. The UI then popped an empty
-     * success toast over a write that never happened, which is the worst
-     * possible reading of that state.
-     */
     private ApiResponse confirmedSuccess(String procedureName, DbResponse dbResponse, String failureLead) {
 
         String successMessage = dbResponse.getSuccessMessage();

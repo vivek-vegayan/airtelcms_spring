@@ -73,11 +73,6 @@ public class    AuthController extends BaseService {
                         loginResponse.getUserId()
                 );
 
-                // Audited explicitly rather than with @Auditable: at this point
-                // the SecurityContext is still empty (the filter had no token to
-                // authenticate), so the aspect could not resolve an actor. The id
-                // used here is the one AuthService just proved the credentials
-                // belong to - not anything taken from the request body.
                 auditLogService.logActionAs(
                         loginResponse.getUserId(),
                         AuditModule.AUTHENTICATION,
@@ -106,17 +101,7 @@ public class    AuthController extends BaseService {
         }
     }
 
-    // Ends the caller's own session and nothing else. This route is no longer
-    // permitAll: JwtAuthenticationFilter runs on it, so by the time we get here
-    // the bearer token has been proved genuine and live, and the token_id we
-    // read out of it is provably the caller's own session.
-    //
-    // The olmId in the request body is now ignored entirely. It used to be the
-    // invalidation key on an unauthenticated route, which meant a bare
-    // {"olmId": "..."} POST from anyone on the network ended that person's
-    // session - and they saw it as "Invalid session" in the middle of their
-    // work. Frontend callers still send it; accepting and discarding it keeps
-    // older clients working.
+
     @PostMapping("/v1/logout")
     public ResponseEntity<?> logout(
             @RequestBody(required = false) Map<String, String> requestBody,
@@ -132,9 +117,7 @@ public class    AuthController extends BaseService {
                 } catch (Exception ex) {
                     LOGGER.error("Failed to extract tokenId from the request's JWT", ex);
                 }
-                // Same token, same claim set: the subject is the user id this
-                // session was issued to. Read here, before the session is torn
-                // down, so the LOGOUT row can name the right person.
+
                 try {
                     String subject = jwtUtil.extractClaims(token).getSubject();
                     if (subject != null && subject.matches("\\d+")) {
@@ -172,11 +155,6 @@ public class    AuthController extends BaseService {
         }
     }
 
-    // Backs the "log out my other device" button the login screen offers after
-    // a 403 "Already Logged". Unauthenticated by necessity - the whole point is
-    // that the caller can't get a token while the old session holds the slot -
-    // but it verifies the account's password before ending anything, so it
-    // proves ownership just as strongly as signin does.
     @PostMapping("/v1/session/terminate")
     public ResponseEntity<?> terminateOwnSessions(
             @RequestBody UserCredentialsDto credentials,
@@ -217,11 +195,7 @@ public class    AuthController extends BaseService {
         response.addCookie(jwtCookie);
     }
 
-    // Same order of preference JwtAuthenticationFilter uses: the Authorization
-    // header first, then the jwt cookie. The old version read the cookie only,
-    // which quietly stopped finding a token an hour into every session - the
-    // cookie's Max-Age is 1 hour while the JWT itself lives for days - and that
-    // is precisely when logout fell back to invalidating by olmId instead.
+
     private String extractToken(HttpServletRequest request) {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {

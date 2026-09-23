@@ -80,13 +80,6 @@ public class PlanActivityExcelService extends BaseService {
     private static final List<String> SHIFT_OPTIONS = List.of("A", "B", "G", "LG", "N");
     private static final List<String> LEVEL_OPTIONS = List.of("L1", "L2", "L3", "L4");
 
-    /**
-     * Column order mirrors sp_insert_plan_activity's own parameter order
-     * (minus actor id) — see PlanActivityExcelMapper. Vertical/Team Function/
-     * CHM Domain/CHM Sub Domain are the first four columns, resolved by the
-     * procedure itself; there is no "Network Domain" column — the procedure
-     * no longer accepts one.
-     */
     private static final String[] HEADERS = {
             "Vertical*", "Team Function*", "CHM Domain*", "CHM Sub Domain*",
             "Layer*", "Plan Type*", "Vendor / OEM*", "Change Impact*",

@@ -26,7 +26,6 @@ import java.util.Set;
 @Service
 public class CabSessionService extends BaseService {
 
-    /** What sp_cab_session_crq_action accepts for its action argument. */
     private static final Set<String> ALLOWED_DECISIONS = Set.of("APPROVE", "REJECT", "RESCHEDULE");
 
     @Autowired
@@ -45,14 +44,6 @@ public class CabSessionService extends BaseService {
         );
     }
 
-    /**
-     * The agenda board for one CAB session - one row per CRQ tabled, carrying
-     * the decision recorded against it so far.
-     *
-     * <p>Every row repeats the session's date and chair, so the board renders its
-     * header from this one call. An agenda with nothing on it is an empty list,
-     * not an error: a session is planned before its CRQs are added.
-     */
     public List<CabAgendaRowDto> getCabSessionAgenda(String sessionId) {
 
         LOGGER.info("call sp_get_crq_cab_agenda_v2('{}');", sessionId);
@@ -65,13 +56,6 @@ public class CabSessionService extends BaseService {
         );
     }
 
-    /**
-     * Records the CAB's decision on one tabled CRQ.
-     *
-     * <p>Keyed on the mapping id rather than the CRQ number: the same CRQ can be
-     * tabled again at a later session, and a decision belongs to the sitting that
-     * took it.
-     */
     public CabSessionCrqActionResultDto recordCrqDecision(
             Long mappingId, CabSessionCrqActionRequest body, Long actorUserId) {
 
@@ -112,13 +96,7 @@ public class CabSessionService extends BaseService {
         return rows.get(0);
     }
 
-    /**
-     * Pulls further CRQs onto an agenda that is already open.
-     *
-     * <p>A CRQ the session already carries comes back under skipped_crq_list -
-     * a normal outcome, not a failure - so both halves are reported and the
-     * caller decides what to say about them.
-     */
+
     public AddCrqToSessionResultDto addCrqsToSession(
             String sessionId, AddCrqToSessionRequest body, Long actorUserId) {
 
@@ -199,14 +177,7 @@ public class CabSessionService extends BaseService {
         }
     }
 
-    /**
-     * Whether a CAB session is already booked for this date + time, and what it
-     * holds. The planner calls this before POSTing a session so the CRQs can be
-     * added to the existing one - on its own link - instead of a second session
-     * landing in the same slot.
-     *
-     * An empty result set is a free slot, not an error.
-     */
+
     public CabPlanConflictDto checkPlanConflict(String date, String time) {
 
         String sql = "CALL sp_check_cab_plan_conflict(?,?)";
@@ -229,12 +200,6 @@ public class CabSessionService extends BaseService {
         );
     }
 
-    /**
-     * The procedure hands crq_list back as a JSON array literal. A slot that
-     * cannot be parsed still answers the only question that matters - is the slot
-     * taken - so a bad list is logged and reported as empty rather than failing
-     * the whole check.
-     */
     private List<String> parseCrqList(String json) {
         if (json == null || json.isBlank()) {
             return List.of();
@@ -247,7 +212,6 @@ public class CabSessionService extends BaseService {
         }
     }
 
-    /** Empty text from a form field means "not given", which the procs read as NULL. */
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }

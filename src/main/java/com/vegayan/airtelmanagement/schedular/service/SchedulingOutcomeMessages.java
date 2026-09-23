@@ -5,31 +5,6 @@ import com.vegayan.airtelmanagement.common.exception.StageActionBlockedException
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Translates {@code Update_CRQ_Scheduling_To_Done_Or_Failed}'s raw
- * {@code error_message} rows into a coded, user-facing refusal, and builds
- * the success text for the two outcomes it does accept.
- *
- * <p>The procedure is the authority and is not modified here. It guards the
- * Scheduling -> Execution transition with exactly five checks, each of which
- * rolls the transaction back and selects one {@code error_message}:
- *
- * <ol>
- *   <li>{@code CRQ not found: <no>} - no CRQ_MASTER_TBL row for that crq_no.</li>
- *   <li>{@code CRQ <no> is not in SCHEDULING_APPROVAL (current: <stage>)} -
- *       the CRQ has already moved on (or never arrived).</li>
- *   <li>{@code Deployment and Operation task is not closed} - Pass only;
- *       {@code prep_push_received <> 1}.</li>
- *   <li>{@code Cab Approval is pending} - Pass only; {@code cab_approval_flag = 'PENDING'}.</li>
- *   <li>{@code Cab Approval request already rejected, ...} - Pass only;
- *       {@code cab_approval_flag = 'REJECTED'}.</li>
- * </ol>
- *
- * <p>Matching is done on stable substrings rather than whole strings so a
- * cosmetic reword in the database degrades to the generic branch instead of
- * breaking. Anything unrecognised is passed through verbatim under
- * {@link #CODE_UNKNOWN} - never swallowed.
- */
 final class SchedulingOutcomeMessages {
 
     static final String CODE_CRQ_NOT_FOUND        = "CRQ_NOT_FOUND";
@@ -42,18 +17,12 @@ final class SchedulingOutcomeMessages {
 
     private static final String STAGE_LABEL = "Scheduling";
 
-    /** Pulls "EXECUTION" out of "... (current: EXECUTION)". */
     private static final Pattern CURRENT_STAGE =
             Pattern.compile("current:\\s*([A-Z_]+)\\s*\\)", Pattern.CASE_INSENSITIVE);
 
     private SchedulingOutcomeMessages() {
     }
 
-    /**
-     * The only two outcomes the procedure acts on. Any other value falls
-     * through both of its branches and reaches {@code COMMIT} having changed
-     * nothing - which would otherwise be reported to the user as a success.
-     */
     static boolean isSupportedOutcome(String localStatus) {
         return localStatus != null
                 && ("DONE".equalsIgnoreCase(localStatus.trim())
@@ -70,17 +39,13 @@ final class SchedulingOutcomeMessages {
                 400);
     }
 
-    /** Success copy - the procedure returns no success_message of its own. */
+
     static String successMessage(String localStatus, String crqNo) {
         return "DONE".equalsIgnoreCase(localStatus.trim())
                 ? "Scheduling completed for CRQ " + crqNo + ". It has moved to Activity Implement."
                 : "Scheduling marked as Failed for CRQ " + crqNo + ".";
     }
 
-    /**
-     * @param procMessage the procedure's {@code error_message}, verbatim
-     * @param crqNo       the CRQ the action was attempted on
-     */
     static StageActionBlockedException translate(String procMessage, String crqNo) {
 
         String raw = procMessage == null ? "" : procMessage.trim();
@@ -134,7 +99,6 @@ final class SchedulingOutcomeMessages {
                 crqNo, 409);
     }
 
-    /** " - it has moved to Activity Implement", when the procedure said which. */
     private static String currentStageSuffix(String procMessage) {
         Matcher m = CURRENT_STAGE.matcher(procMessage);
         if (!m.find()) return "";

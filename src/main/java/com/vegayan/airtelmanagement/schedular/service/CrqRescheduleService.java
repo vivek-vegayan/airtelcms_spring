@@ -11,27 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Orchestrates the CRQ_SP_RESCHEDULE_* wizard. All database access goes through
- * CrqRescheduleRepository (stored procedures only - no SQL text in this layer).
- *
- * These procedures don't share one uniform result-set shape:
- *  - the reschedule-owned procedures (INITIATE/SAVE_DATE/MOVE_STAGE's own
- *    guards/GET_SLOTS's own guards/CONFIRM_SLOT/CANCEL) always emit a final
- *    "status"/"message" row;
- *  - the scheduling-engine procedures they delegate to
- *    (Get_Predicted_SlotDates_Reschedule, Get_EmpName_By_DesiredDate_Reschedule)
- *    use an "error_message"-only row for their own guard failures, and
- *    otherwise emit raw data rows with neither column.
- * checkStatusRow() covers the first shape; initiate()/moveStage()/getSlots()
- * explicitly cover all three, since the success paths of INITIATE and
- * MOVE_STAGE pass a delegated procedure's result set through unwrapped.
- *
- * Every guard the procedures enforce (closed CRQ, manual hold, three-attempt
- * cap, future date, previous-stage-only, slot/reservation availability,
- * holiday, network freeze, approved leave) stays in the database - this layer
- * only translates the answer into an HTTP response, never re-implements it.
- */
 @Service
 public class CrqRescheduleService extends BaseService {
 
@@ -64,7 +43,7 @@ public class CrqRescheduleService extends BaseService {
         return Integer.valueOf(v.toString());
     }
 
-    /** MySQL surfaces TINYINT(1) as Boolean, Integer or Long depending on driver settings. */
+
     private static boolean flag(Map<String, Object> row, String key) {
         Object v = row.get(key);
         if (v == null) return false;
@@ -73,7 +52,7 @@ public class CrqRescheduleService extends BaseService {
         return "1".equals(v.toString()) || Boolean.parseBoolean(v.toString());
     }
 
-    /** The procedures return ordered stage lists as a single CSV column. */
+
     private static List<String> csv(Map<String, Object> row, String key) {
         String value = str(row, key);
         if (value == null || value.isBlank()) return List.of();
@@ -83,7 +62,7 @@ public class CrqRescheduleService extends BaseService {
                 .toList();
     }
 
-    /** True when a result set carries engineer-slot rows rather than a status/error row. */
+
     private static boolean isSlotRows(List<Map<String, Object>> rows) {
         if (rows.isEmpty()) return false;
         Map<String, Object> first = rows.get(0);
@@ -97,10 +76,7 @@ public class CrqRescheduleService extends BaseService {
                 intVal(r, "Free_Minutes"), intVal(r, "Duration_Minutes"), str(r, "Skill_Level"));
     }
 
-    /**
-     * Raises the procedure's own message as a BusinessException when it
-     * reported a guard failure, otherwise returns the row unchanged.
-     */
+
     private Map<String, Object> checkStatusRow(List<Map<String, Object>> rows) {
         if (rows.isEmpty()) {
             throw new BusinessException("No response from the database.");
@@ -118,7 +94,6 @@ public class CrqRescheduleService extends BaseService {
         return row;
     }
 
-    /** OLM id of the acting user - the audit performer every CRQ history row stores. */
     private String resolveOlmId(Long actorUserId) {
         if (actorUserId == null) return null;
         try {
@@ -132,11 +107,6 @@ public class CrqRescheduleService extends BaseService {
 
     /* ── wizard steps ─────────────────────────────────────────────────────── */
 
-    /**
-     * Step 1's read half: everything the dialog shows before anything is
-     * written, so opening Reschedule on a closed/blocked/exhausted CRQ says so
-     * instead of creating an attempt row that INITIATE would then reject.
-     */
     public RescheduleContextResponseDto getContext(Long crqId) {
         if (crqId == null) throw new BusinessException("crqId is required.");
         Map<String, Object> row = checkStatusRow(rescheduleRepository.findContext(crqId));
@@ -257,19 +227,6 @@ public class CrqRescheduleService extends BaseService {
         }
         Map<String, Object> row = last.get(0);
 
-        // How many result sets came back is what separates the two failure
-        // modes, and getting this wrong is not cosmetic:
-        //
-        //  - exactly one  -> the procedure hit its own guard (unknown/forward
-        //    stage, closed CRQ, manual hold, attempt cap) and left BEFORE the
-        //    stage move committed. Nothing changed; raise it so the user can
-        //    correct the input and retry.
-        //  - more than one -> the move already committed and only the
-        //    delegated slot computation that follows it failed. Raising here
-        //    would tell the user the step failed while the CRQ has in fact
-        //    moved, and a retry would then be rejected with "Reschedule request
-        //    is STAGE_MOVED". Report it as partial instead and let the slot
-        //    step's Refresh retry just that half.
         boolean moveCommitted = resultSets.size() > 1;
 
         String errorMessage = str(row, "error_message");
@@ -328,22 +285,6 @@ public class CrqRescheduleService extends BaseService {
 
     /**
      * Step 5: confirm the chosen slot - the call that commits the reschedule.
-     *
-     * The procedure takes a named application lock on the plan/task, re-verifies
-     * the slot is still OFFERED, re-checks the new engineer's live roster
-     * capacity, archives the previous reservation, activates the new one,
-     * rebalances ROSTER_SHIFT_TBL for both engineers, and updates the execution
-     * slot, stage assignment and audit history - all inside its own transaction.
-     *
-     * Since the 2026-09-16 live rewrite it also writes CRQ_MASTER_TBL's
-     * current_stage / current_status / reschedule_count (MOVE_STAGE deliberately
-     * no longer does), which is why confirming is what makes the stage move
-     * visible on the CRQ, and queues the Remedy/Cygnet push.
-     *
-     * Its contention guards - slot taken, engineer's day full, lock held by
-     * another user - all come back as status='error' and surface here as a
-     * BusinessException carrying the procedure's own wording, which already
-     * tells the user to refresh and pick again.
      */
     public RescheduleConfirmResponseDto confirmSlot(Long actorUserId, RescheduleConfirmSlotRequest request) {
         if (request == null || request.rescheduleId() == null) {

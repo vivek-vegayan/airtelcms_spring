@@ -15,11 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.ByteArrayOutputStream;
 import java.util.List;
 
-/**
- * Bulk Plan + Activity creation via Excel, calling the existing (previously
- * unused) sp_insert_plan_activity procedure. Additive only — does not touch
- * ActivityController/ActivityService or their endpoints.
- */
+
 @RestController
 @RequestMapping("/activity/excel")
 public class PlanActivityExcelController {

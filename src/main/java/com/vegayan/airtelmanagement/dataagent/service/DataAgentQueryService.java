@@ -16,19 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
-/**
- * Proxies a natural-language question to the external Traffic QA server
- * (AppPropertiesConfig#getPYTHON_SERVER_URL, {@code /ask}). That service is
- * LLM-backed (its own default per-call budget is 120s, see its README's
- * QA_TIMEOUT), so the timeout here is set with headroom above that rather
- * than a typical fast-API value - a shorter timeout would abort perfectly
- * healthy slow queries.
- *
- * The response already comes back as {question, intent, sql, columns, rows,
- * row_count, summary, error} - rows as a list of column->value maps - so
- * this layer passes it through close to verbatim, only defending against a
- * legacy array-of-arrays "rows" shape some older reference code assumed.
- */
 @Service
 public class DataAgentQueryService extends BaseService {
 

@@ -13,12 +13,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/**
- * CRQ Journey Explorer: search CRQs by Sub Domain, then load a single CRQ's
- * full, dynamic-length journey stage list plus its pending service approvals,
- * the SPOC recorded against each of its CAB services, and its org scope. See
- * CrqJourneyExplorerService for the underlying stored-procedure calls.
- */
 @RestController
 @RequestMapping("/crqworkflow/journey-explorer")
 @RequiredArgsConstructor

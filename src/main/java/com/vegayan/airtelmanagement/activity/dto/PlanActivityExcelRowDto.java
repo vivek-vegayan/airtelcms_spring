@@ -2,13 +2,6 @@ package com.vegayan.airtelmanagement.activity.dto;
 
 import lombok.Data;
 
-/**
- * One row of the Plan+Activity bulk-upload Excel sheet. Every hierarchy and
- * team field is a plain name straight from the spreadsheet — sp_insert_plan_activity
- * (updated 2026-07-31) resolves Vertical/Team Function/Domain/Sub Domain/Team
- * names to IDs itself, so no server-side ID resolution or echo-back fields
- * are carried on this DTO.
- */
 @Data
 public class PlanActivityExcelRowDto {
 

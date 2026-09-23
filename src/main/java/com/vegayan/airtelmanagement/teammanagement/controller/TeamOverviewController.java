@@ -96,11 +96,6 @@ public class TeamOverviewController {
         return ResponseEntity.ok(teamOverviewService.updateEmployee(request));
     }
 
-    // One route covers activation and deactivation, so the verb is taken from
-    // the submitted status (ACTIVE -> ENABLE, INACTIVE -> DISABLE) rather than
-    // being flattened to a vague UPDATE. Note the actor recorded is the
-    // authenticated caller, NOT request.actorUserId - that field stays in the
-    // business payload untouched, but it is not what the audit trail trusts.
     @Auditable(module = AuditModule.USER_MANAGEMENT,
                subModule = AuditModule.SUB_USER,
                action = AuditAction.UPDATE,

@@ -2,16 +2,6 @@ package com.vegayan.airtelmanagement.activity.service;
 
 import com.vegayan.airtelmanagement.activity.dto.PlanActivityExcelRowDto;
 
-/**
- * Excel row -> sp_insert_plan_activity positional parameters.
- * Order below is verified against the live procedure's
- * information_schema.PARAMETERS, dumped 2026-07-31 (37 IN params incl. actor
- * id) — do not reorder without re-verifying against the live procedure.
- * Every hierarchy and team parameter is VARCHAR: the procedure resolves
- * Vertical/Function/Domain/Sub Domain/Team names to IDs itself against
- * ORG_VERTICAL/ORG_FUNCTION/ORG_DOMAIN/ORG_SUB_DOMAIN, so no IDs are ever
- * sent from here.
- */
 public final class PlanActivityExcelMapper {
 
     private PlanActivityExcelMapper() {

@@ -13,12 +13,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
-/**
- * Proxies per-response feedback (thumbs/rating 1-5 + optional comment) to the
- * external Traffic QA server (AppPropertiesConfig#getPYTHON_SERVER_URL,
- * {@code /feedback}). Unlike /ask this call does no LLM work, so a much
- * shorter timeout than DataAgentQueryService's is appropriate.
- */
 @Service
 public class DataAgentFeedbackService extends BaseService {
 

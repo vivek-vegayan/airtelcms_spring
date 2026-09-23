@@ -11,12 +11,6 @@ import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
-// =============================================================================
-// D. CRQDetailService.java
-// 5 detail SPs fired in parallel — all take only changeId
-// =============================================================================
-
-
 @Service
 public class CRQDetailService extends BaseService {
 
@@ -82,13 +76,6 @@ public class CRQDetailService extends BaseService {
         LOGGER.info("CALL GetCRQDetailMain('" + p[0] + "');");
         List<CRQDetailMainDto> rows = databaseUtils.executeProcedureAndFetchObjects(
                 jdbcTemplateTwo, "CALL GetCRQDetailMain(?)", CRQDetailMainDto.class, p);
-        return rows.isEmpty() ? null : rows.get(0);
-    }
-
-    private CRQDetailsDto getCrqDetailMain(Object[] p) {
-        LOGGER.info("CALL GetCRQDetailMain('" + p[0] + "');");
-        List<CRQDetailsDto> rows = databaseUtils.executeProcedureAndFetchObjects(
-                jdbcTemplateTwo, "CALL GetCRQDetailMain(?)", CRQDetailsDto.class, p);
         return rows.isEmpty() ? null : rows.get(0);
     }
 

@@ -39,24 +39,9 @@ public class BaseCrqDto {
     private String        locationCodeM6;
     private String        taskProfileType;
 
-    /**
-     * Execution window of the CRQ - CRQ_MASTER_TBL.execution_slot_start/end.
-     * Bound from the Get_CRQ_Workflow_Overview* procedures, which publish it
-     * under these names (they used to mis-alias it as
-     * activity_plan_start_date/end_date, a CRQ_TASK_TBL column name).
-     */
     private LocalDateTime executionSlotStart;
     private LocalDateTime executionSlotEnd;
 
-    /**
-     * Same window as seen by the seven per-stage procedures
-     * (Get_CRQ_Review_Details, Get_Impact_Analysis_Details, ...), which still
-     * publish it as activity_plan_start_date/end_date - there it is a COALESCE
-     * of the master execution slot (when rescheduled) and the task's own
-     * planned dates. Kept so those endpoints keep binding; the getters below
-     * make both names resolve to the same value whichever procedure filled the
-     * row, so a client may read either.
-     */
     private LocalDateTime activityPlanStartDate;
     private LocalDateTime activityPlanEndDate;
     private String        workAreaTerritory;
@@ -74,12 +59,6 @@ public class BaseCrqDto {
     private String        categorizationTier3;
     private String        remedyChangeImpact;
 
-    /**
-     * Binds a raw change_impact column when a stage procedure returns it
-     * un-aliased; getter falls back to remedyChangeImpact (the overview
-     * procedures publish d.change_impact AS Remedy_Change_Impact) so every
-     * stage's response carries the value under one name.
-     */
     private String        changeImpact;
     private String        opsDeployTask;
     private String        state;

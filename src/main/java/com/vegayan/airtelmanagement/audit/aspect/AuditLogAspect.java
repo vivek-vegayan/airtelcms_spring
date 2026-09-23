@@ -19,32 +19,6 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.StringJoiner;
 
-/**
- * Turns an {@code @Auditable} controller method into one audit row.
- *
- * <p>This is the whole integration mechanism. A module opts in by annotating
- * an endpoint; nothing inside that endpoint - or in the service, repository or
- * procedure below it - changes at all. That is what keeps the feature additive:
- * the audit trail observes the existing workflow, it is not woven into it.
- *
- * <h3>What is and is not recorded</h3>
- * <ul>
- *   <li>Advice is {@code @AfterReturning}, so a method that threw records
- *       nothing - a failed operation must not leave a row claiming it
- *       happened.</li>
- *   <li>Several endpoints report a refusal with HTTP 200 and a
- *       {@code status: "Fail"} body. {@link #succeeded} inspects the returned
- *       value for exactly that shape and skips those too.</li>
- *   <li>Page loads are not audited because no GET that merely renders a screen
- *       carries the annotation. There is no pointcut here on controllers in
- *       general, by design.</li>
- * </ul>
- *
- * <h3>Failure policy</h3>
- * Every path through {@link #recordAction} is wrapped: an audit problem is
- * logged to the APPLICATION log and swallowed. The user has already had their
- * business result by this point and must not be shown a failure for it.
- */
 @Aspect
 @Component
 @RequiredArgsConstructor
@@ -52,7 +26,6 @@ public class AuditLogAspect {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AuditLogAspect.class);
 
-    /** Values of a {@code status} field that mean the operation was refused. */
     private static final Set<String> FAILURE_STATUSES = Set.of("fail", "failed", "error");
 
     private final AuditLogService auditLogService;
@@ -109,16 +82,7 @@ public class AuditLogAspect {
         return bodySucceeded(result);
     }
 
-    /**
-     * Treats a payload carrying {@code status = Fail | Failed | Error} as a
-     * refusal. Reading the property generically covers {@code ApiResponse}
-     * (a record), {@code LoginResponseDto} and the reschedule DTOs without
-     * naming any of them here.
-     *
-     * <p>Only those three exact words count. A CRQ whose {@code status} is
-     * "DONE" or "CANCELLED" is a successful operation reporting domain state,
-     * and must still be audited.
-     */
+
     private boolean bodySucceeded(Object body) {
         if (body == null) {
             return true;
@@ -134,12 +98,6 @@ public class AuditLogAspect {
     // Resolving the annotation against the actual call
     // ------------------------------------------------------------------
 
-    /**
-     * The verb, taken from {@code actionParam()} when that resolves to a known
-     * status value and from {@code action()} otherwise. This is what lets a
-     * single activate/deactivate endpoint record ENABLE or DISABLE rather than
-     * a vague UPDATE, without splitting the endpoint in two.
-     */
     private String resolveAction(Auditable auditable, String[] names, Object[] args) {
         String path = auditable.actionParam();
         if (path == null || path.isBlank()) {
@@ -172,12 +130,6 @@ public class AuditLogAspect {
         }
     }
 
-    /**
-     * {@code remark()} with the values named by {@code keyParams()} appended,
-     * e.g. {@code "Approved the CRQ [crqNo=CRQ0001]"}. Keys are what make a row
-     * say which record was acted on without any endpoint composing a message
-     * by hand.
-     */
     private String buildRemark(Auditable auditable, String[] names, Object[] args) {
         StringBuilder remark = new StringBuilder(auditable.remark() == null ? "" : auditable.remark().trim());
 
@@ -210,15 +162,7 @@ public class AuditLogAspect {
     // Parameter path resolution
     // ------------------------------------------------------------------
 
-    /**
-     * Resolves {@code "userId"} or {@code "request.userId"} against the call's
-     * arguments. Deliberately not SpEL: the paths needed here are a parameter
-     * name plus at most a couple of property hops, and a full expression
-     * engine on the request path would be both slower and a much larger
-     * failure surface for something whose failure must be harmless.
-     *
-     * @return the value, or null if any hop cannot be resolved
-     */
+
     private Object resolvePath(String path, String[] names, Object[] args) {
         if (path == null || path.isBlank() || names == null || args == null) {
             return null;
@@ -246,7 +190,7 @@ public class AuditLogAspect {
         return current;
     }
 
-    /** Getter first, then a declared field. Returns null rather than throwing. */
+
     private Object readProperty(Object target, String property) {
         if (target == null || property == null || property.isBlank()) {
             return null;

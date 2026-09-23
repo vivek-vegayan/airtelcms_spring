@@ -23,33 +23,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * CAB All-CRQs drawer > Export Excel.
- *
- * <p>Runs getCSVasperService.py on the SSH host for one CRQ + service. The
- * script does not write a file - it prints the impacted-circuit rows straight
- * to stdout, "^"-delimited, one record per line:
- *
- * <pre>
- * JBL-MPL-LTE-PE-RTR-42-137^202.123.42.137^CISCO^ASR-9912-XR^...
- * </pre>
- *
- * <p>So there is nothing to fetch over SFTP afterwards: stdout is captured,
- * split on "^" (the same delimiter ImpactBatchFileService reads its batch CSVs
- * with) and written into an in-memory workbook that streams back to the
- * browser.
- *
- * <p>Formatting is shared with that export through ExcelStyleUtils, and applied
- * the same way: row 0 gets the dark-blue header band, everything below it the
- * bordered body style, then auto-filter, frozen top row and fixed widths.
- */
 @Service
 public class CabServiceCsvExportService extends BaseService {
 
     private static final int ROW_ACCESS_WINDOW = 100;
     private static final String DELIMITER = "^";
 
-    /** Rejects anything that could break out of the two script arguments. */
     private static final String SAFE_ARG = "[A-Za-z0-9_.:/-]+";
 
     public byte[] exportServiceCsv(String crqNo, String service) throws Exception {

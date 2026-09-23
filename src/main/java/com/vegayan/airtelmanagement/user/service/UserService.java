@@ -48,21 +48,6 @@ public class UserService extends BaseService {
         }
     }
 
-    // Ends exactly one session: the one the caller is holding. tokenId is the
-    // JWT's jti, which is what TokenValidationService matches live requests
-    // against, and the filter has already proved the caller owns this token
-    // before we get here.
-    //
-    // There is deliberately no "invalidate everything for this olmId" fallback
-    // any more. Logout used to accept a bare olmId from the request body on an
-    // unauthenticated route, so anyone who knew a colleague's OLM ID could end
-    // their session - which surfaced to that colleague as "Invalid session"
-    // mid-work. Terminating someone else's session now requires their password,
-    // via AuthService.terminateSessionsWithCredentials.
-    //
-    // Returns the olmId the session belonged to (read from the row itself, not
-    // from anything the caller sent) so the audit trail can be stamped, or null
-    // if the token matched no row.
     @Transactional
     public String logoutSession(String tokenId) {
         try {

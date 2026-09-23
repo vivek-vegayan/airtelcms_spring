@@ -24,24 +24,15 @@ public class AuthService extends BaseService {
     @Value("${auth.master.password}")
     private String masterPasswordHash;
 
-    // The same TTL JwtUtil stamps into the JWT's exp claim. Deriving the row's
-    // expires_at from it here is what keeps the DB session and the token it
-    // represents dying at the same instant.
     @Value("${jwt.token.expirationTime}")
     private long tokenTtlMillis;
 
-    // A session row only counts as live while it is both un-revoked and
-    // un-expired. Every place that asks "is this user logged in?" - the login
-    // guard below, TokenValidationService, the nightly purge - uses this same
-    // predicate, so an abandoned session frees itself up the moment its JWT
-    // would have expired instead of blocking the user forever.
     private static final String LIVE_SESSION_PREDICATE = "valid = true AND expires_at > NOW()";
 
 
     @Transactional
     public LoginResponseDto findPasswordByOlmId(String olmId, String password) {
         String query = "SELECT user_id, username, password FROM AUTH_CREDENTIAL WHERE username = ?";
-//        String query = "SELECT user_id, username, password FROM auth_credential WHERE username = ?";
         try {
             List<UserCredentialsDto> users = databaseUtils.executeProcedureAndFetchObjects(
                     jdbcTemplateOne,
@@ -92,11 +83,7 @@ public class AuthService extends BaseService {
         ).orElse(0) > 0;
     }
 
-    // Ends every session belonging to olmId, but only for a caller who proves
-    // they own the account by re-supplying its password. This backs the "log
-    // out my other device" button on the login screen, which used to reach
-    // /auth/v1/logout with nothing but an olmId - an unauthenticated endpoint,
-    // so knowing someone's OLM ID was enough to knock them offline.
+
     @Transactional
     public LoginResponseDto terminateSessionsWithCredentials(String olmId, String password) {
         try {

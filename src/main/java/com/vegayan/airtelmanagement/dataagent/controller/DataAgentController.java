@@ -22,26 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 
-/**
- * REST surface of the Data Agent module - a conversational NL-to-SQL analytics
- * assistant proxied to the external Traffic QA server (see
- * DataAgentQueryService / DataAgentFeedbackService for the /ask and /feedback
- * proxy calls, and AppPropertiesConfig#getPYTHON_SERVER_URL for its address),
- * plus per-user chat history (DataAgentHistoryService, backed by the
- * SP_DATAAGENT_* procedures in db/migration/2026-08-03_dataagent_module.sql).
- *
- * Authentication is the host app's existing JWT filter, same as every other
- * controller; the acting user for history is resolved from the JWT subject,
- * never taken from the request, exactly like CrqRescheduleController.
- *
- * No @PreAuthorize here (deliberately, not an oversight): UserPermissionService
- * .getPermissionsByUserIdV1 - the only source of @PreAuthorize authorities in
- * this app - queries MODULE/SUB_MODULE/PERMISSION tables that no longer exist
- * in the live schema (superseded by WEB_MODULE/WEB_SUB_MODULE/WEB_PERMISSION
- * per the RBAC WEB cutover), so it silently returns no authorities for every
- * user. Every other controller in this app is auth-only for the same reason -
- * this one matches that, rather than being unreachable behind a broken check.
- */
 @RestController
 @RequestMapping("/dataagent")
 public class DataAgentController {

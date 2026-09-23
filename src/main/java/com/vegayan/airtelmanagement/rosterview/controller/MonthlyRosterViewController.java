@@ -70,32 +70,6 @@ public class MonthlyRosterViewController {
 
         return ResponseEntity.ok(response);
     }
-//    @PostMapping("/changeshift")
-//    public ResponseEntity<ApiResponse> changeShift(
-//            @RequestParam Long affectedUserId,
-//            @RequestParam Integer newAssignActivity,
-//            @RequestParam Integer newAvailableMinutes,
-//            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate shiftDate,
-//            @RequestParam Integer newShiftId,
-//            @RequestParam String reason,
-//            Authentication authentication) {
-//
-//        Long actorUserId = Long.parseLong(authentication.getName());
-//
-//        ApiResponse response = monthlyRosterViewService.changeShift(
-//                actorUserId,
-//                affectedUserId,
-//                newAssignActivity,
-//                newAvailableMinutes,
-//                shiftDate,
-//                newShiftId,
-//                reason
-//        );
-//
-//        return ResponseEntity.ok(response);
-//    }
-
-
 
     @GetMapping("/shiftdropdowns")
     public List<ShiftDropDownsDto> shiftDropDowns() {

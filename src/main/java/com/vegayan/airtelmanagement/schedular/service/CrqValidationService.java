@@ -9,24 +9,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-/**
- * Backs the Plan &amp; Inventory "Validate" dialog over the two procedures in
- * db/migration/2026-07-28_crq_validation_details.sql.
- *
- * Both procedures follow this codebase's error convention - a single
- * `error_message` column on a guard failure - so DatabaseUtils raises a
- * DatabaseOperationException carrying the procedure's own message and
- * GlobalExceptionHandler renders it as ApiResponse{status,message}.
- *
- * Neither editable field is length-capped: both columns are TEXT and the
- * procedure stores whatever is sent, so a CRQ can carry as many nodes and
- * interfaces as it actually touches. Only CRQ Number is still required, and
- * the procedure re-checks that server-side.
- */
 @Service
 public class CrqValidationService extends BaseService {
 
-    /** Read-only load for the dialog. Returns exactly one row for a known CRQ. */
     public CrqValidationDetailsDto getValidationDetails(String crqNo) {
         String trimmedCrqNo = trimToNull(crqNo);
         if (trimmedCrqNo == null) {
@@ -46,11 +31,6 @@ public class CrqValidationService extends BaseService {
         return rows.get(0);
     }
 
-    /**
-     * Saves the two editable attributes and returns the refreshed row, so the
-     * dialog can re-render from authoritative (trimmed, upserted) DB values
-     * without a second round trip.
-     */
     public CrqValidationDetailsDto saveValidationDetails(CrqValidationSaveRequest request) {
         if (request == null) {
             throw new BusinessException("Validation details are required.");
@@ -67,12 +47,6 @@ public class CrqValidationService extends BaseService {
                 crqNo, nodeName, interfacePair);
 
         return getValidationDetails(crqNo);
-    }
-
-    /** Kept for callers that only need the outcome, not the refreshed row. */
-    public ApiResponse saveAndAcknowledge(CrqValidationSaveRequest request) {
-        saveValidationDetails(request);
-        return new ApiResponse("Success", "Validation details saved successfully.");
     }
 
     private static String trimToNull(String value) {

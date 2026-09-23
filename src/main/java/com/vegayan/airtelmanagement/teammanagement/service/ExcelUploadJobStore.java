@@ -13,16 +13,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * In-memory registry of upload jobs, keyed by upload id. This is a
- * single-instance, manually-restarted dev/prod-lite deployment (no other
- * job-tracking table exists anywhere in this codebase); a job's durable
- * outcome (who got created) always remains recoverable from the employee
- * tables and the error report even if this map is lost on restart - only the
- * LIVE progress percentage is ephemeral. Promote this to a persisted table
- * only if the deployment becomes multi-instance or must survive a restart
- * mid-upload.
- */
 @Component
 public class ExcelUploadJobStore {
 
@@ -38,12 +28,6 @@ public class ExcelUploadJobStore {
     public ExcelUploadJobStore(ExcelUploadProperties props) {
         this.props = props;
     }
-
-    /**
-     * Human-readable upload id, e.g. EXCEL-20260803-001. Call frequency is
-     * admin-triggered (not hot-path), so a synchronized daily counter is
-     * simpler than lock-free CAS gymnastics around the date rollover edge case.
-     */
     public synchronized String generateUploadId() {
         LocalDate today = LocalDate.now();
         if (!today.equals(lastIdDate)) {

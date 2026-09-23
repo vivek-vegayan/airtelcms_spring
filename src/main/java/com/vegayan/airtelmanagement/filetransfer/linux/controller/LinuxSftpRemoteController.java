@@ -16,14 +16,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
-/**
- * Remote /tmp flows for the Linux SFTP Management module: list, download,
- * upload, and delete files directly against a remote Linux server's /tmp
- * directory over SFTP. Every endpoint here takes the target host's connection details
- * in the request body (never in a query string, so credentials never end up
- * in access logs) and opens a fresh SFTP session per call — see
- * {@link LinuxSftpRemoteService} for why that's stateless by design.
- */
 @RestController
 @RequestMapping("/api/sftp/linux/remote")
 @AllArgsConstructor
@@ -31,7 +23,6 @@ public class LinuxSftpRemoteController {
 
     private final LinuxSftpRemoteService linuxSftpRemoteService;
 
-    /** Upload a freshly-picked file straight to the remote server's /tmp — skipping local staging entirely — then return that listing. */
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadToRemoteTmp(
             @RequestParam("file") MultipartFile file,
@@ -63,7 +54,7 @@ public class LinuxSftpRemoteController {
         }
     }
 
-    /** List the files currently in the remote server's /tmp directory. */
+
     @PostMapping("/list")
     public ResponseEntity<?> listRemoteTmp(@RequestBody SftpConnectionRequestDto request) {
         try {
@@ -78,7 +69,7 @@ public class LinuxSftpRemoteController {
         }
     }
 
-    /** Download a file from the remote server's /tmp directory back to the client. */
+
     @PostMapping("/download")
     public ResponseEntity<?> downloadFromRemoteTmp(@RequestBody SendToLinuxRequestDto request) {
         try {
@@ -104,7 +95,6 @@ public class LinuxSftpRemoteController {
         }
     }
 
-    /** Delete a file from the remote server's /tmp directory, then return the resulting listing. */
     @PostMapping("/delete")
     public ResponseEntity<?> deleteFromRemoteTmp(@RequestBody SendToLinuxRequestDto request) {
         try {

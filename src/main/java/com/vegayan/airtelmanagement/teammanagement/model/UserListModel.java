@@ -6,9 +6,6 @@ import lombok.Setter;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 
-/**
- * Maps to sp_get_users_paginated() result-set-2 columns.
- */
 @Getter
 @Setter
 public class UserListModel {

@@ -5,7 +5,7 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-/** Row returned by GET_REMEDY_DETAILS_BY_STAGE (REMEDY_UPDATE_ATTR_TBL). */
+
 @Getter
 @Setter
 public class RemedyAttrDto {

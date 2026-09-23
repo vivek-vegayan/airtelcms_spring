@@ -13,7 +13,7 @@ public class CrqCloserDto extends BaseCrqDto {
     private LocalDateTime closureStartDate;
     private LocalDateTime closureEndDate;
 
-    // CRQ_STAGE_ASSIGN_TBL fields returned by Get_CRQ_Closer_Details
+
     private LocalDateTime closureAssignedStart;
     private LocalDateTime closureAssignedEnd;
     private String        closurePerformedBy;

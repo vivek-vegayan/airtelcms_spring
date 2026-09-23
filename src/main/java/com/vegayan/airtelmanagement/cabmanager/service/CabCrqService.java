@@ -73,12 +73,6 @@ public class CabCrqService extends BaseService {
         return rows.get(0);
     }
 
-    /**
-     * sp_get_cab_my_crq_by_id keys off CRQ_CAB_SERVICE_TBL.Id (Service_Approval_Id),
-     * not the CRQ number - the same id sp_get_my_crqs_rows emits for each row, so a
-     * CRQ carrying several service-approval rows resolves to the exact one that was
-     * clicked instead of an arbitrary match on Crq_No.
-     */
     public MyCrqDetailDto getMyCrqById(Long serviceApprovalId) {
 
         String sql = "CALL sp_get_cab_my_crq_by_id(?)";
@@ -129,55 +123,6 @@ public class CabCrqService extends BaseService {
         return response;
     }
 
-    // ── CRQ JOURNEY ─────────────────────────────────────────────────────────
-//
-//    public CrqJourneyDto getCrqJourney(String crqId) {
-//
-//        CrqDto crq = getCrqById(crqId);
-//
-//        LOGGER.info("call sp_get_crq_journey_meta('{}');", crqId);
-//        List<JourneyMetaDto> metaRows = databaseUtils.executeProcedureGetDataWithError(
-//                jdbcTemplateTwo,
-//                "CALL sp_get_crq_journey_meta(?)",
-//                JourneyMetaDto.class,
-//                crqId
-//        );
-//        JourneyMetaDto meta = metaRows.isEmpty() ? new JourneyMetaDto() : metaRows.get(0);
-//
-//        LOGGER.info("call sp_get_crq_journey_approval_chain('{}');", crqId);
-//        List<ApprovalChainStepDto> approvalChain = databaseUtils.executeProcedureGetDataWithError(
-//                jdbcTemplateTwo,
-//                "CALL sp_get_crq_journey_approval_chain(?)",
-//                ApprovalChainStepDto.class,
-//                crqId
-//        );
-//
-//        LOGGER.info("call sp_get_crq_journey_parallel_tracks('{}');", crqId);
-//        List<ParallelTrackDto> parallelTracks = databaseUtils.executeProcedureGetDataWithError(
-//                jdbcTemplateTwo,
-//                "CALL sp_get_crq_journey_parallel_tracks(?)",
-//                ParallelTrackDto.class,
-//                crqId
-//        );
-//
-//        LOGGER.info("call sp_get_crq_journey_remarks('{}');", crqId);
-//        List<JourneyRemarkDto> remarks = databaseUtils.executeProcedureGetDataWithError(
-//                jdbcTemplateTwo,
-//                "CALL sp_get_crq_journey_remarks(?)",
-//                JourneyRemarkDto.class,
-//                crqId
-//        );
-//
-//        CrqJourneyDto journey = new CrqJourneyDto();
-//        journey.setCrq(crq);
-//        journey.setPipeIndex(meta.getPipeIndex());
-//        journey.setApprovalChain(approvalChain);
-//        journey.setParallelTracks(parallelTracks);
-//        journey.setRemarks(remarks);
-//        return journey;
-//    }
-    
-
     // ── WORKFLOW ACTIONS ────────────────────────────────────────────────────
 
 
@@ -199,7 +144,6 @@ public class CabCrqService extends BaseService {
         return databaseUtils.executeProcedureForMessageV1(jdbcTemplateTwo, sql, reasonId);
     }
 
-    /** SPOC name / mobile / email are required by the caller - the controller rejects a blank one before this runs. */
     public ApiResponse approveCrq(Long serviceApprovalId, String comment, Long actorUserId,
                                   String spocName, String spocMobNo, String spocEmail) {
         LOGGER.info(
@@ -232,7 +176,6 @@ public class CabCrqService extends BaseService {
         return databaseUtils.executeProcedureForMessageV1(jdbcTemplateTwo, sql, serviceApprovalId, newDate, newWindow, reason, actorUserId);
     }
 
-    /** Approves a pending CAB reschedule request: applies the new slot and re-balances the roster. */
     public ApiResponse approveCabRescheduleRequest(String crqNo, LocalDateTime slotStart, LocalDateTime slotEnd, Long actorUserId) {
         LOGGER.info(
                 "call sp_approve_crq_cab_reschedule_req('{}','{}','{}','{}');",
@@ -256,12 +199,7 @@ public class CabCrqService extends BaseService {
 
     // ── SPOC / FIELD ENGINEER DETAILS ───────────────────────────────────────
 
-    /**
-     * SPOC and Field Engineer recorded against a CRQ. The proc returns at most
-     * one row, so this collapses the list to a single DTO and returns null when
-     * the CRQ has no assignment row - the controller turns that into 204, which
-     * the UI renders as an empty state rather than an error.
-     */
+
     public SpocFeDetailsDto getSpocFeDetails(String crqNo) {
         String sql = "CALL sp_get_SPOC_FE_details(?)";
         LOGGER.info("call sp_get_SPOC_FE_details('{}');", crqNo);

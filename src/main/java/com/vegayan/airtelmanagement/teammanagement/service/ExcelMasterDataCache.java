@@ -10,11 +10,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Master/lookup data (dropdowns + org hierarchy) loaded ONCE per upload and
- * pre-indexed for O(1) case-insensitive membership checks, instead of being
- * re-fetched or linearly scanned for every row.
- */
 public final class ExcelMasterDataCache {
 
     private final Set<String> employmentTypes;

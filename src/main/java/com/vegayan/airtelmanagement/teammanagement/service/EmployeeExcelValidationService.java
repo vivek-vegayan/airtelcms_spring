@@ -15,17 +15,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-/**
- * Validates parsed Excel rows entirely in memory BEFORE any row reaches the
- * database. Splits rows into "valid" (safe to hand to the batch processor)
- * and "invalid" (mandatory-field / format / duplicate / dropdown / hierarchy
- * violations), so bad rows never cost a DB round trip.
- * <p>
- * Row numbers here match the existing convention already used by
- * {@code ExcelRowResultDto} (1-based position within the parsed row list,
- * not the physical Excel sheet row) so results from validation and from the
- * DB batch stage can be merged and sorted consistently.
- */
 @Service
 public class EmployeeExcelValidationService {
 

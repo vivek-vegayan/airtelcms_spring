@@ -1,12 +1,5 @@
 package com.vegayan.airtelmanagement.schedular.dto;
 
-/**
- * Maps raw CRQ_MASTER_TBL.current_status enum values to the display values
- * the UI has always used ("Not Started", "In Progress", "Paused", "Done",
- * ...). Values already in display form pass through untouched, so this is
- * safe to apply on every status field regardless of which procedure (old or
- * new generation) produced it.
- */
 public final class WorkflowStatusDisplay {
 
     private WorkflowStatusDisplay() {

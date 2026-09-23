@@ -7,11 +7,6 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-/**
- * Body for one Remedy section save. Field order mirrors
- * INSERT_REMEDY_UPDATE_ATTR's parameter list (P_CRQ_NO/P_CMS_STAGE come from
- * the enclosing AttributeUpdateSaveRequestDto, not from here).
- */
 @Getter
 @Setter
 public class RemedySaveDto {

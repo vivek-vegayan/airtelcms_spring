@@ -10,16 +10,6 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Chunks an already-validated row list into batches and runs each batch in
- * its own transaction via {@link EmployeeExcelService#createEmployeesBatch}
- * (a cross-bean call, so Spring's REQUIRES_NEW proxy is honored).
- * <p>
- * NOTE: this does NOT reduce the number of stored-procedure calls - the proc
- * is still invoked once per row, exactly as before. The wins are bounded
- * transaction size/lock duration, bounded blast radius on a non-row-scoped
- * failure, and per-batch progress/timing visibility.
- */
 @Service
 public class EmployeeExcelBatchProcessor {
 

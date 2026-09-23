@@ -12,10 +12,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 
-// =============================================================================
-// C. CRQListService.java
-// GetCRQList_Vivek + GetCRQListCount_Vivek fired in parallel
-// =============================================================================
 @Service
 public class CRQListService extends BaseService {
 

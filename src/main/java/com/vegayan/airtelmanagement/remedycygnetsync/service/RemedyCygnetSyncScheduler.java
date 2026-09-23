@@ -7,15 +7,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-/**
- * Runs RemedyCygnetSyncService every minute.
- *
- * fixedDelay, not fixedRate: the minute is counted from the END of the previous
- * cycle, so a batch of 50 CRQs that takes 3 minutes is followed by one quiet
- * minute and then the next cycle. Cycles can never overlap or pile up.
- *
- * @EnableScheduling is already on application-wide (ExcelUploadAsyncConfig).
- */
 @Component
 @RequiredArgsConstructor
 public class RemedyCygnetSyncScheduler {
@@ -24,7 +15,6 @@ public class RemedyCygnetSyncScheduler {
 
     private final RemedyCygnetSyncService remedyCygnetSyncService;
 
-    /** Set remedy.cygnet-sync.enabled=false to park the job. */
     @Value("${remedy.cygnet-sync.enabled:true}")
     private boolean enabled;
 

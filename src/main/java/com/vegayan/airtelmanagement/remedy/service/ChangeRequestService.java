@@ -108,16 +108,6 @@ public class ChangeRequestService {
         }
     }
 
-
-    private void require(Map<String, Object> values, String key) {
-
-        Object val = values.get(key);
-
-        if (val == null || val.toString().isEmpty()) {
-            throw new BusinessException(key + " is required for this stage");
-        }
-    }
-
     // ===================== TRANSFORM =====================
 
     private static final Map<String, String> KEY_MAPPING = Map.of(

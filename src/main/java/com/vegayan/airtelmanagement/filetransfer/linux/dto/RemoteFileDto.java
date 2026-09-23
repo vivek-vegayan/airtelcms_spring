@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
-/** A single entry returned when listing the remote Linux server's /tmp directory. */
 @Getter
 @Builder
 @AllArgsConstructor

@@ -1,21 +1,5 @@
 package com.vegayan.airtelmanagement.audit;
 
-/**
- * Module / sub-module labels written to {@code UI_ACTIONS_LOGGER.module} and
- * {@code .sub_module}.
- *
- * <p>The module names mirror the {@code WEB_MODULE.module_name} values the
- * RBAC layer and the sidebar already use ("User Management", "Scheduler",
- * "Cab Manager", ...) so that an audit row reads the same way as the screen
- * the action was performed on. Sub-module names are the screen or entity
- * within that module and are NOT constrained to {@code WEB_SUB_MODULE} rows -
- * several audited actions happen on screens that have no RBAC sub-module row
- * of their own, and inventing grants for them was explicitly out of scope.
- *
- * <p>Constants, not an enum, for the same reason as {@link AuditAction}: the
- * columns are free-text VARCHARs that must keep accepting anything already
- * written to them.
- */
 public final class AuditModule {
 
     private AuditModule() {

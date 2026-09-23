@@ -5,10 +5,6 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-/**
- * Flat row returned by Get_CRQ_Stage_History - one row per CRQ per workflow
- * stage, sourced from CRQ_MASTER_TBL + CRQ_STAGE_ASSIGN_TBL.
- */
 @Getter
 @Setter
 public class StageHistoryRowDto {

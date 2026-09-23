@@ -6,7 +6,6 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-/** Row returned by GET_CAB_DETAILS_BY_STAGE (CAB_UPDATE_ATTR_TBL). */
 @Getter
 @Setter
 @JsonInclude(JsonInclude.Include.NON_NULL)

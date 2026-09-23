@@ -5,10 +5,6 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-/**
- * Result set 1 of get_crq_details - the CRQ Journey info card. See
- * db/migration/2026-07-29_crq_journey_explorer_procs.sql.
- */
 @Getter
 @Setter
 public class CrqDetailsInfoDto {

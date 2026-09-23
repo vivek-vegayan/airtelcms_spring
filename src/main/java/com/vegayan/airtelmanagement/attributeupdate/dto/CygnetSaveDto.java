@@ -8,26 +8,7 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-/**
- * Body for one Cygnet section save, serialized straight into
- * INSERT_CYGNET_UPDATE_ATTR's JSON parameter.
- *
- * The JSON names are CYGNET_UPDATE_ATTR_TBL's column names verbatim, matching
- * CygnetAttrDto on the read side: that procedure builds its SET clause by
- * matching each JSON key against a real column, so a key it cannot place -
- * camelCase "impactedCircles" against a column called "Impacted Circle(s)" -
- * fails the whole save with 'Invalid column received in JSON'.
- *
- * NON_NULL inclusion is what makes a partial save safe. Despite its name the
- * procedure UPDATEs the CRQ's existing row in place, one column per key it is
- * given, and writes SQL NULL for a key sent with a null value. Serializing
- * every field would therefore blank each column the current stage never
- * collected; only the fields the client actually filled go over.
- *
- * ("Infrastructure Change ID" is absent by design: the CRQ arrives as the
- * enclosing AttributeUpdateSaveRequestDto's crqNo, which is the procedure's own
- * parameter, and the procedure drops that key from the JSON anyway.)
- */
+
 @Getter
 @Setter
 public class CygnetSaveDto {
@@ -93,7 +74,6 @@ public class CygnetSaveDto {
     @JsonProperty("TASK_ID")
     private String taskId;
 
-    // Change Coordinator support group trio, Remedy's own field names.
     @JsonProperty("ASCPY")
     private String ascpy;
 
@@ -103,7 +83,6 @@ public class CygnetSaveDto {
     @JsonProperty("ASGRP")
     private String asgrp;
 
-    // Change Implementer support group trio.
     @JsonProperty("ChgImpCpy")
     private String chgImpCpy;
 

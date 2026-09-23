@@ -8,19 +8,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-/**
- * Mirrors the legacy standalone project's PlanningWorkflowController
- * (com.vegayan.changemanagement.planning.controller) URL contract for the
- * CRQ Review checkpoint JSON - the CheckPoint Summary Preview panel's
- * frontend calls /planningworkflow/json/raw/{crqNo}, matching that original
- * source. Only this endpoint pair is ported here; the rest of the legacy
- * controller's endpoints (mop, scheduling, reschedule, assignment, ...)
- * already have current equivalents under CrqWorkflowController.
- *
- * The SFTP read/write logic itself already lives in CrqWorkflowService
- * (reused by /crqworkflow/json/raw/{crqNo}), so this controller only adds
- * the /planningworkflow route on top of it rather than duplicating it.
- */
 @RestController
 @RequestMapping("/planningworkflow")
 @RequiredArgsConstructor
