@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -133,28 +134,27 @@ public class FutureWeekService extends BaseService {
      */
     private int getTotalEmployeeCount(Long domainId, Long subDomainId) {
 
-        // Same table and scope rule as sp_get_future_week, so the page count
-        // matches the rows it returns (subDomainId 0 = all sub domains of domainId).
-        String countSql =
-                "SELECT COUNT(DISTINCT u.user_id) " +
-                        "FROM USER_MASTER u " +
-                        "JOIN ROSTER_FUTURE_WEEK_TBL f ON u.user_id = f.user_id " +
-                        "JOIN USER_ROLE_MAP urm ON u.user_id = urm.user_id " +
-                        "WHERE f.iso_week = WEEK(CURDATE(), 3) + 7 " +
-                        "AND ((? > 0 AND urm.sub_domain_id = ?) " +
-                        "  OR (? = 0 AND urm.domain_id = ?))";
+        String sql = "CALL sp_get_future_week_count(?, ?)";
+
+        LOGGER.info(
+                "call sp_get_future_week_count('{}', '{}');",
+                domainId,
+                subDomainId
+        );
 
         try {
 
-            Integer count =
-                    jdbcTemplateTwo.queryForObject(
-                            countSql,
-                            Integer.class,
-                            subDomainId, subDomainId,
-                            subDomainId, domainId
+            List<Map<String, Object>> rows =
+                    databaseUtils.executeProcedureLastResultSet(
+                            jdbcTemplateTwo,
+                            sql,
+                            domainId,
+                            subDomainId
                     );
 
-            return count != null ? count : 0;
+            Object count = rows.isEmpty() ? null : rows.get(0).get("total_count");
+
+            return count instanceof Number n ? n.intValue() : 0;
 
         } catch (Exception e) {
 
