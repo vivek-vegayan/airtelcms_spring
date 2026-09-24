@@ -87,11 +87,14 @@ public class UserController extends BaseService {
 
     @GetMapping("/v3/getemployeesbysubdomain")
     public PageResponseDto<EmployeeDto> getEmployeesBySubDomainIdV3(
+            Authentication authentication,
+            @RequestParam(required = false) Long domainId,
             @RequestParam("subDomainId") Long subDomainId,
             @RequestParam String employeeStatus,
             @PageableDefault(size = 10) Pageable pageable
     ) {
-        return userService.getEmployeesBySubDomainIdV3(subDomainId, employeeStatus,pageable);
+        Long actorUserId = Long.valueOf(authentication.getName());
+        return userService.getEmployeesBySubDomainIdV3(actorUserId, domainId, subDomainId, employeeStatus, pageable);
     }
 
 

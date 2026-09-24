@@ -18,14 +18,16 @@ public class GoldenSetService extends BaseService {
 
     public GoldenSetResponseDto getGoldenSet(
             String actorUserId,
+            Long domainId,
             Long subDomainId
     ) {
 
-        String sql = "CALL sp_get_golden_set(?, ?)";
+        String sql = "CALL sp_get_golden_set(?, ?, ?)";
 
         LOGGER.info(
-                "call sp_get_golden_set('{}','{}');",
+                "call sp_get_golden_set('{}','{}','{}');",
                 actorUserId,
+                domainId,
                 subDomainId
         );
 
@@ -35,6 +37,7 @@ public class GoldenSetService extends BaseService {
                         sql,
                         GoldenSetRowDto.class,
                         actorUserId,
+                        domainId,
                         subDomainId
                 );
 

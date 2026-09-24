@@ -21,13 +21,13 @@ import java.util.Map;
 @Service
 public class CrqJourneyExplorerService extends BaseService {
 
-    public List<CrqJourneySearchRowDto> getCrqsBySubDomain(Long subDomainId) {
-        LOGGER.info("call GetCRQBySubDomainId('{}');", subDomainId);
+    public List<CrqJourneySearchRowDto> getCrqsBySubDomain(Long actorUserId, Long domainId, Long subDomainId) {
+        LOGGER.info("call GetCRQBySubDomainId('{}','{}','{}');", actorUserId, domainId, subDomainId);
         return databaseUtils.executeProcedureGetDataWithError(
                 jdbcTemplateTwo,
-                "CALL GetCRQBySubDomainId(?)",
+                "CALL GetCRQBySubDomainId(?,?,?)",
                 CrqJourneySearchRowDto.class,
-                subDomainId);
+                actorUserId, domainId, subDomainId);
     }
 
     public CrqJourneyPageDto getCrqJourneyDetails(String crqNo) {

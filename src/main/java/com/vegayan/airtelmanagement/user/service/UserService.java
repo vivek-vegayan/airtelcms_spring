@@ -310,6 +310,8 @@ public class UserService extends BaseService {
     }
 
     public PageResponseDto<EmployeeDto> getEmployeesBySubDomainIdV3(
+            Long actorUserId,
+            Long domainId,
             Long subDomainId,
             String employeeStatus,
             Pageable pageable) {
@@ -318,7 +320,9 @@ public class UserService extends BaseService {
         int limit = pageable.getPageSize();
 
         LOGGER.info(
-                "CALL sp_get_emp_by_sub_domain_id_Vivek('{}','{}','{}','{}');",
+                "CALL sp_get_emp_by_sub_domain_id_Vivek('{}','{}','{}','{}','{}','{}');",
+                actorUserId,
+                domainId,
                 subDomainId,
                 employeeStatus,
                 offset,
@@ -330,13 +334,15 @@ public class UserService extends BaseService {
                         (CallableStatementCreator) con -> {
 
                             CallableStatement cs = con.prepareCall(
-                                    "{CALL sp_get_emp_by_sub_domain_id_Vivek(?,?,?,?)}"
+                                    "{CALL sp_get_emp_by_sub_domain_id_Vivek(?,?,?,?,?,?)}"
                             );
 
-                            cs.setLong(1, subDomainId);
-                            cs.setString(2, employeeStatus);
-                            cs.setInt(3, offset);
-                            cs.setInt(4, limit);
+                            cs.setObject(1, actorUserId);
+                            cs.setObject(2, domainId);   // optional — NULL when not picked
+                            cs.setLong(3, subDomainId);
+                            cs.setString(4, employeeStatus);
+                            cs.setInt(5, offset);
+                            cs.setInt(6, limit);
 
                             return cs;
                         },

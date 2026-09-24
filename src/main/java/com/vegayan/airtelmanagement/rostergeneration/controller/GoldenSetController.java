@@ -25,13 +25,16 @@ public class GoldenSetController {
     @GetMapping
     public GoldenSetResponseDto getGoldenSet(
             Authentication authentication,
-            @RequestParam Long subDomainId
+            @RequestParam(required = false) Long domainId,
+            @RequestParam(required = false) Long subDomainId
     ) {
 
         String actorUserId = authentication.getName();
 
+        // Proc cascades: sub domain -> domain -> the actor's own domain.
         return goldenSetService.getGoldenSet(
                 actorUserId,
+                domainId,
                 subDomainId
         );
     }

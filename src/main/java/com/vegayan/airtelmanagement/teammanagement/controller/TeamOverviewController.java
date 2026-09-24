@@ -34,8 +34,11 @@ public class TeamOverviewController {
 
     @GetMapping("/getempcountbysubdomainid")
     public List<EmpCountBySubDomainIdDto> getEmpCountBySubDomainId(
+            Authentication authentication,
+            @RequestParam(required = false) Long domainId,
             @RequestParam Long subDomainId) {
-        return teamOverviewService.getEmpCountBySubDomainId(subDomainId);
+        Long actorUserId = Long.valueOf(authentication.getName());
+        return teamOverviewService.getEmpCountBySubDomainId(actorUserId, domainId, subDomainId);
     }
 
     @GetMapping("/getcreateuserdropdowns")

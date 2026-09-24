@@ -38,11 +38,11 @@ public class TeamOverviewService extends BaseService {
     // Employee count
     // ─────────────────────────────────────────────
 
-    public List<EmpCountBySubDomainIdDto> getEmpCountBySubDomainId(Long subDomainId) {
-        String sql = "CALL sp_get_emp_count_by_sub_domain_id(?)";
-        LOGGER.info("call sp_get_emp_count_by_sub_domain_id('{}');", subDomainId);
+    public List<EmpCountBySubDomainIdDto> getEmpCountBySubDomainId(Long actorUserId, Long domainId, Long subDomainId) {
+        String sql = "CALL sp_get_emp_count_by_sub_domain_id(?,?,?)";
+        LOGGER.info("call sp_get_emp_count_by_sub_domain_id('{}','{}','{}');", actorUserId, domainId, subDomainId);
         return databaseUtils.executeProcedureAndFetchObjectsV1(
-                jdbcTemplateTwo, sql, EmpCountBySubDomainIdDto.class, subDomainId);
+                jdbcTemplateTwo, sql, EmpCountBySubDomainIdDto.class, actorUserId, domainId, subDomainId);
     }
 
     // ─────────────────────────────────────────────

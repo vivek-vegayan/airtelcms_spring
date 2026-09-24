@@ -40,16 +40,18 @@ public class FutureWeekService extends BaseService {
      */
     public FutureWeekResponseDto getFutureWeek(
             String actorUserId,
+            Long domainId,
             Long subDomainId,
             int pageNumber,
             int pageSize
     ) {
 
-        String sql = "CALL sp_get_future_week(?, ?, ?, ?)";
+        String sql = "CALL sp_get_future_week(?, ?, ?, ?, ?)";
 
         LOGGER.info(
-                "call sp_get_future_week('{}', '{}', {}, {});",
+                "call sp_get_future_week('{}', '{}', '{}', {}, {});",
                 actorUserId,
+                domainId,
                 subDomainId,
                 pageNumber,
                 pageSize
@@ -61,12 +63,13 @@ public class FutureWeekService extends BaseService {
                         sql,
                         FutureWeekRowDto.class,
                         actorUserId,
+                        domainId,
                         subDomainId,
                         pageNumber,
                         pageSize
                 );
 
-        int totalEmployees = getTotalEmployeeCount(subDomainId);
+        int totalEmployees = getTotalEmployeeCount(domainId, subDomainId);
 
         FutureWeekResponseDto response =
                 new FutureWeekResponseDto();
@@ -128,15 +131,18 @@ public class FutureWeekService extends BaseService {
     /**
      * Total employee count
      */
-    private int getTotalEmployeeCount(Long subDomainId) {
+    private int getTotalEmployeeCount(Long domainId, Long subDomainId) {
 
+        // Same table and scope rule as sp_get_future_week, so the page count
+        // matches the rows it returns (subDomainId 0 = all sub domains of domainId).
         String countSql =
                 "SELECT COUNT(DISTINCT u.user_id) " +
                         "FROM USER_MASTER u " +
-                        "JOIN FUTURE_WEEK f ON u.user_id = f.user_id " +
+                        "JOIN ROSTER_FUTURE_WEEK_TBL f ON u.user_id = f.user_id " +
                         "JOIN USER_ROLE_MAP urm ON u.user_id = urm.user_id " +
                         "WHERE f.iso_week = WEEK(CURDATE(), 3) + 7 " +
-                        "AND urm.sub_domain_id = ?";
+                        "AND ((? > 0 AND urm.sub_domain_id = ?) " +
+                        "  OR (? = 0 AND urm.domain_id = ?))";
 
         try {
 
@@ -144,7 +150,8 @@ public class FutureWeekService extends BaseService {
                     jdbcTemplateTwo.queryForObject(
                             countSql,
                             Integer.class,
-                            subDomainId
+                            subDomainId, subDomainId,
+                            subDomainId, domainId
                     );
 
             return count != null ? count : 0;

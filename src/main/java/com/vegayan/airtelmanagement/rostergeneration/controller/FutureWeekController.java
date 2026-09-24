@@ -25,13 +25,16 @@ public class FutureWeekController {
     @GetMapping("/futureweek")
     public FutureWeekResponseDto getFutureWeek(
             Authentication authentication,
+            @RequestParam(required = false) Long domainId,
             @RequestParam Long subDomainId,
             @RequestParam(defaultValue = "1")  int pageNumber,
             @RequestParam(defaultValue = "20") int pageSize
     ) {
         String actorUserId = authentication.getName();
+        // subDomainId 0 = "ALL": every sub domain of domainId.
         return futureWeekService.getFutureWeek(
                 actorUserId,
+                domainId,
                 subDomainId,
                 pageNumber,
                 pageSize

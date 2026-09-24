@@ -5,6 +5,7 @@ import com.vegayan.airtelmanagement.schedular.dto.CrqJourneyPageDto;
 import com.vegayan.airtelmanagement.schedular.dto.CrqJourneySearchRowDto;
 import com.vegayan.airtelmanagement.schedular.service.CrqJourneyExplorerService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,8 +22,11 @@ public class CrqJourneyExplorerController {
     private final CrqJourneyExplorerService crqJourneyExplorerService;
 
     @GetMapping("/crqs")
-    public List<CrqJourneySearchRowDto> getCrqsBySubDomain(@RequestParam Long subDomainId) {
-        return crqJourneyExplorerService.getCrqsBySubDomain(subDomainId);
+    public List<CrqJourneySearchRowDto> getCrqsBySubDomain(Authentication authentication,
+                                                           @RequestParam(required = false) Long domainId,
+                                                           @RequestParam Long subDomainId) {
+        Long actorUserId = Long.valueOf(authentication.getName());
+        return crqJourneyExplorerService.getCrqsBySubDomain(actorUserId, domainId, subDomainId);
     }
 
     @GetMapping("/{crqNo}")
