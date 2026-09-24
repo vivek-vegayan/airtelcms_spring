@@ -160,6 +160,7 @@ public class AttributeUpdateService extends BaseService {
         values.put("z1D_Action", "Update_Change");
         values.put("Description", "Updated Summary via API");
         values.put("Performance Rating", "4");
+        values.put("retryFlag", "No");
 
         if (request.getRemedy() != null) {
             var remedy = request.getRemedy();
@@ -223,6 +224,7 @@ public class AttributeUpdateService extends BaseService {
         values.setImpactAnalysisDone("Yes");
         values.setPreCheckDone("Yes");
         values.setPostCheckDone("Yes");
+
 
         if (request.getCab() != null) {
             var cab = request.getCab();

@@ -85,7 +85,6 @@ public class RemedyCabRequestValues {
     private String mopValidationRemark;
 
 
-
     @JsonProperty("MOP Created By")
     private String mopCreatedBy;
 
@@ -283,4 +282,7 @@ public class RemedyCabRequestValues {
 
     @JsonProperty("Impacted Parties CAB19")
     private String impactedPartiesCab19;
+
+    @JsonProperty("retryFlag")
+    private String retryFlag = "No";
 }

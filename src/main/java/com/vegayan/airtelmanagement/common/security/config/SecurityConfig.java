@@ -79,11 +79,6 @@ public class SecurityConfig {
         config.setAllowedOrigins(List.of(
 
                 // Production - Airtel LB
-//                "https://chngmgmt.airtel.com:3011",
-//                "http://10.240.129.101:3011",
-//                "http://10.240.129.101:443",
-//                "https://chngmgmt.airtel.com:443",
-
                 "https://chngmgmt.airtel.com",
 
                 // Development / internal environments

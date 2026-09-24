@@ -107,6 +107,7 @@ public class RemedyCygnetSyncService extends BaseService {
         request.add("Infrastructure Change ID", crq.crqNo());
         request.add("z1D_Action", "Update_Change");
         request.add("Description", "Updated Summary via API");
+        request.add("retryFlag", "No");
 
         if (crq.scheduledStartTime() != null) {
             request.add("Scheduled Start Date", DateTimeUtils.toRemedyIst(crq.scheduledStartTime()));

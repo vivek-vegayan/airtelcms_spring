@@ -66,13 +66,6 @@ public class AppPropertiesConfig {
     private String SSH_IMPACT_ANALYSIS_SCRIPT_PATH;
     private String SFTP_BATCHWISE_IMPACT_EXCEL_PATH;
 
-    private String SFTP_LOCAL_PATH_WIN = "C:\\vegayan\\simplus\\sftp_uploads";
-    private String SFTP_LOCAL_PATH_LIN = "/home/vegayan/simplus/sftp_uploads";
-    private String SFTP_LOCAL_PATH = "D:\\Vivek\\Windows SFTP";
-
-
-    private String SFTP_LINUX_REMOTE_DIR = "/tmp";
-
     private String PYTHON_SERVER_URL;
 
     public AppPropertiesConfig() {

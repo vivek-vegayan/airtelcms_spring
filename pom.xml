@@ -131,7 +131,8 @@
 		</dependency>
 
 		<!-- Maintained fork of JSch (same com.jcraft.jsch package API) used for
-		     the Linux SFTP Management module to connect to remote Linux servers. -->
+		     SSH/SFTP to remote Linux servers (CAB CSV export, impact batch files,
+		     CRQ workflow). The SFTP Management module moved to cms_sftp_spring. -->
 		<dependency>
 			<groupId>com.github.mwiede</groupId>
 			<artifactId>jsch</artifactId>

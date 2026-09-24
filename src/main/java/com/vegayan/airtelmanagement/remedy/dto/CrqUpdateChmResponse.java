@@ -18,5 +18,4 @@ public class CrqUpdateChmResponse {
 
     private String transactionId;
 
-    private Boolean retryFlag;
 }

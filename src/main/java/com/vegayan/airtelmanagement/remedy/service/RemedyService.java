@@ -106,8 +106,7 @@ public class RemedyService extends BaseService {
                     "success",
                     body.getInfrastructureChangeId(),
                     apiResponse.message(),
-                    transactionId,
-                    false
+                    transactionId
             );
 
         } catch (Exception e) {
@@ -117,8 +116,7 @@ public class RemedyService extends BaseService {
                     "fail",
                     body.getInfrastructureChangeId() != null ? body.getInfrastructureChangeId() : "",
                     e.getMessage(),
-                    transactionId,
-                    true
+                    transactionId
             );
         }
     }
