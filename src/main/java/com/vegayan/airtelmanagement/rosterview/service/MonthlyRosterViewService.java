@@ -5,9 +5,14 @@ import com.vegayan.airtelmanagement.common.service.BaseService;
 import com.vegayan.airtelmanagement.rosterview.dto.CurrentShiftCountDto;
 import com.vegayan.airtelmanagement.rosterview.dto.DailyRosterDto;
 import com.vegayan.airtelmanagement.rosterview.dto.MonthlyRosterResponseDto;
+import com.vegayan.airtelmanagement.rosterview.dto.RosterImportRequestDto;
+import com.vegayan.airtelmanagement.rosterview.dto.RosterImportResponseDto;
 import com.vegayan.airtelmanagement.rosterview.dto.RosterRowDto;
 import com.vegayan.airtelmanagement.rosterview.dto.ShiftDropDownsDto;
 import com.vegayan.airtelmanagement.rosterview.dto.UserRosterDto;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
 import java.sql.Date;
@@ -19,6 +24,9 @@ import java.util.Map;
 
 @Service
 public class MonthlyRosterViewService extends BaseService {
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     public MonthlyRosterResponseDto getRosterMonthlyAndWeekly(
             Long domainId,
@@ -244,6 +252,63 @@ public class MonthlyRosterViewService extends BaseService {
                 newShiftId,
                 reason
         );
+    }
+
+    /**
+     * Save the roster uploaded from Excel. Calls sp_import_roster_shift once
+     * per employee (it updates existing days and inserts missing ones).
+     * One employee failing doesn't stop the others; the failures are
+     * returned so the UI can show them.
+     */
+    public RosterImportResponseDto importRosterShifts(List<RosterImportRequestDto> employees) {
+
+        String sql = "CALL sp_import_roster_shift(?, ?)";
+
+        LOGGER.info("Roster import request received: {} employee(s)", employees.size());
+
+        int saved = 0;
+        List<String> errors = new ArrayList<>();
+
+        for (RosterImportRequestDto employee : employees) {
+
+            if (employee.shifts() == null || employee.shifts().isEmpty()) {
+                continue;
+            }
+
+            try {
+                List<Map<String, Object>> shifts = new ArrayList<>();
+                for (RosterImportRequestDto.ShiftEntry shift : employee.shifts()) {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("shift_date", shift.shiftDate().toString());
+                    row.put("shift_id", shift.shiftId());
+                    shifts.add(row);
+                }
+                String rosterJson = objectMapper.writeValueAsString(shifts);
+
+                LOGGER.info(
+                        "call sp_import_roster_shift('{}','{}');",
+                        employee.olmId(),
+                        rosterJson
+                );
+
+                databaseUtils.executeProcedureForMessageV1(
+                        jdbcTemplateTwo,
+                        sql,
+                        employee.olmId(),
+                        rosterJson
+                );
+                saved++;
+
+            } catch (DataAccessException e) {
+                LOGGER.error("Roster import failed for {}", employee.olmId(), e);
+                errors.add(employee.olmId() + ": " + e.getMostSpecificCause().getMessage());
+            } catch (Exception e) {
+                LOGGER.error("Roster import failed for {}", employee.olmId(), e);
+                errors.add(employee.olmId() + ": " + e.getMessage());
+            }
+        }
+
+        return new RosterImportResponseDto(saved, errors.size(), errors);
     }
 
     public List<ShiftDropDownsDto> shiftDropDowns() {

@@ -3,6 +3,8 @@ package com.vegayan.airtelmanagement.rosterview.controller;
 import com.vegayan.airtelmanagement.common.dto.ApiResponse;
 import com.vegayan.airtelmanagement.rosterview.dto.CurrentShiftCountDto;
 import com.vegayan.airtelmanagement.rosterview.dto.MonthlyRosterResponseDto;
+import com.vegayan.airtelmanagement.rosterview.dto.RosterImportRequestDto;
+import com.vegayan.airtelmanagement.rosterview.dto.RosterImportResponseDto;
 import com.vegayan.airtelmanagement.rosterview.dto.ShiftDropDownsDto;
 import com.vegayan.airtelmanagement.rosterview.service.MonthlyRosterViewService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -69,6 +71,11 @@ public class MonthlyRosterViewController {
         );
 
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/importshifts")
+    public RosterImportResponseDto importShifts(@RequestBody List<RosterImportRequestDto> employees) {
+        return monthlyRosterViewService.importRosterShifts(employees);
     }
 
     @GetMapping("/shiftdropdowns")
