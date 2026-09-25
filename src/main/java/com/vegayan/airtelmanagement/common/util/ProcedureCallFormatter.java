@@ -45,6 +45,20 @@ public final class ProcedureCallFormatter {
      * @return e.g. {@code CALL Get_MOP_Create_Details(404,2,6);}
      */
     public static String renderPrepared(String sql, Object... args) {
+        return renderPrepared(sql, MAX_LITERAL_CHARS, args);
+    }
+
+    /**
+     * Same as {@link #renderPrepared} but never truncates, so the line can
+     * always be pasted and run. Only for calls whose arguments are known to
+     * be of reasonable size (e.g. an API response of a few KB) - never for
+     * document/base64 payloads.
+     */
+    public static String renderPreparedFull(String sql, Object... args) {
+        return renderPrepared(sql, Integer.MAX_VALUE, args);
+    }
+
+    private static String renderPrepared(String sql, int maxLiteralChars, Object... args) {
         if (sql == null) {
             return "";
         }
@@ -54,7 +68,7 @@ public final class ProcedureCallFormatter {
             sb.append("  -- args: ");
             for (int i = 0; i < values.length; i++) {
                 if (i > 0) sb.append(", ");
-                sb.append(literal(values[i]));
+                sb.append(literal(values[i], maxLiteralChars));
             }
             return sb.toString();
         }
@@ -70,7 +84,7 @@ public final class ProcedureCallFormatter {
                 inString = !inString;
                 sb.append(c);
             } else if (c == '?' && !inString) {
-                sb.append(literal(values[next++]));
+                sb.append(literal(values[next++], maxLiteralChars));
             } else {
                 sb.append(c);
             }
@@ -101,6 +115,10 @@ public final class ProcedureCallFormatter {
 
     /** SQL literal for one argument - unquoted for numbers, NULL for null. */
     private static String literal(Object value) {
+        return literal(value, MAX_LITERAL_CHARS);
+    }
+
+    private static String literal(Object value, int maxLiteralChars) {
         if (value == null) {
             return "NULL";
         }
@@ -111,10 +129,10 @@ public final class ProcedureCallFormatter {
             return "<binary, " + bytes.length + " bytes>";
         }
         String raw = value.toString();
-        if (raw.length() > MAX_LITERAL_CHARS) {
+        if (raw.length() > maxLiteralChars) {
             // Deliberately not a valid literal: a truncated value must not
             // look like something that can be pasted and run.
-            return "'" + escape(raw.substring(0, MAX_LITERAL_CHARS))
+            return "'" + escape(raw.substring(0, maxLiteralChars))
                     + "'<truncated, " + raw.length() + " chars total>";
         }
         return "'" + escape(raw) + "'";

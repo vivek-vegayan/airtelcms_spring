@@ -13,4 +13,6 @@ public class EngineerDailyAssignmentDto {
     private String stage;
     private Integer durationMins;
     private String remark;
+    private String planType;
+    private String activityName;
 }

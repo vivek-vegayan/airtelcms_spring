@@ -1,0 +1,32 @@
+{
+    "data": {
+        "equipmentData": [
+            {"action": "ACTIVE", "holderLabel": "shelf=1_MCIPS300C_MCIPS300C_sub_slot=22", "modelEquipmentType": "OTR28_ER", "neLabel": "BQG-BCLJK-RCI-T5-ER9.104", "sfpType": "OTR28_ER"},
+            {"action": "ACTIVE", "holderLabel": "Shelf-1_6500 32-Slot Packet-Optical Shelf Assembly-Shelf_Slot-1-7", "modelEquipmentType": "MCIPS300C", "neLabel": "BQG-BCLJK-RCI-T5-ER9.104", "sfpType": null},
+            {"action": "ACTIVE", "holderLabel": "shelf=1_MCIPS300C_MCIPS300C_sub_slot=4", "modelEquipmentType": "ETGBE", "neLabel": "BQG-BCLJK-RCI-T5-ER9.104", "sfpType": null},
+            {"action": "ACTIVE", "holderLabel": "shelf=1_MCIPS300C_MCIPS300C_sub_slot=21", "modelEquipmentType": "OTR28_ER", "neLabel": "BQG-BCLJK-RCI-T5-ER9.104", "sfpType": "OTR28_ER"},
+            {"action": "ACTIVE", "holderLabel": "shelf=1_MCIPS300C_MCIPS300C_sub_slot=6", "modelEquipmentType": "OTP10", "neLabel": "BQG-BCLJK-RCI-T5-ER9.104", "sfpType": "LR"},
+            {"action": "ACTIVE", "holderLabel": "shelf=1_MCIPS300C_MCIPS300C_sub_slot=5", "modelEquipmentType": "OTGBE", "neLabel": "BQG-BCLJK-RCI-T5-ER9.104", "sfpType": "LX"},
+            {"action": "ACTIVE", "holderLabel": "shelf=1_MCIPS300C_MCIPS300C_sub_slot=3", "modelEquipmentType": "ETGBE", "neLabel": "BQG-BCLJK-RCI-T5-ER9.104", "sfpType": null},
+            {"action": "ACTIVE", "holderLabel": "shelf=1_MCIPS300C_MCIPS300C_sub_slot=4", "modelEquipmentType": "ETGBE", "neLabel": "BQG-BCLJK-IAI-T5-ER9.121", "sfpType": null},
+            {"action": "ACTIVE", "holderLabel": "shelf=1_MCIPS300C_MCIPS300C_sub_slot=21", "modelEquipmentType": "OTR28_ER", "neLabel": "BQG-BCLJK-IAI-T5-ER9.121", "sfpType": "OTR28_ER"},
+            {"action": "ACTIVE", "holderLabel": "shelf=1_MCIPS300C_MCIPS300C_sub_slot=5", "modelEquipmentType": "OTGBE", "neLabel": "BQG-BCLJK-IAI-T5-ER9.121", "sfpType": "LX"},
+            {"action": "ACTIVE", "holderLabel": "shelf=1_MCIPS300C_MCIPS300C_sub_slot=3", "modelEquipmentType": "ETGBE", "neLabel": "BQG-BCLJK-IAI-T5-ER9.121", "sfpType": null},
+            {"action": "ACTIVE", "holderLabel": "shelf=1_MCIPS300C_MCIPS300C_sub_slot=6", "modelEquipmentType": "OTP10_LR", "neLabel": "BQG-BCLJK-IAI-T5-ER9.121", "sfpType": "LR"},
+            {"action": "ACTIVE", "holderLabel": "shelf=1_MCIPS300C_MCIPS300C_sub_slot=22", "modelEquipmentType": "OTR28_ER", "neLabel": "BQG-BCLJK-IAI-T5-ER9.121", "sfpType": "OTR28_ER"},
+            {"action": "ACTIVE", "holderLabel": "shelf=1_NPT-1100-Shelf_MCIPS300C", "modelEquipmentType": "MCIPS300C", "neLabel": "BQG-BCLJK-IAI-T5-ER9.121", "sfpType": null}
+        ],
+        "linkSummary": [
+            {"aEndNeLabel": "BQG-BCLJK-IRA-T5-ER9.38", "aEndPtpMoName": "BS:MCIPS300C 25GE-ETY Port 22", "plannedObjectOperation": "ADD", "zEndNeLabel": "BQG-BCLJK-RCI-T5-ER9.104", "zEndPtpMoName": "MCIPS300C:SFP:p=21"},
+            {"aEndNeLabel": "BQG-BCLJK-RCI-T5-ER9.104", "aEndPtpMoName": "MCIPS300C:SFP:p=22", "plannedObjectOperation": "ADD", "zEndNeLabel": "GSND-BCLJK-MSCN-T5-ER61.222", "zEndPtpMoName": "BS:MCIPS300C 25GE-ETY Port 21"},
+            {"aEndNeLabel": "BQG-BCLJK-IAI-T5-ER9.121", "aEndPtpMoName": "MCIPS300C:SFP:p=22", "linkRate": "TwentyFiveGigabitEthernet", "plannedObjectOperation": "ADD", "zEndNeLabel": "SIG_HCO_018_1AG_A_CNCS55A2R001", "zEndPtpMoName": "TwentyFiveGigE0/0/0/24"},
+            {"aEndNeLabel": "BQG-BCLJK-HOB-T5-ER61.227", "aEndPtpMoName": "BS:MCIPS300C 25GE-ETY Port 22", "plannedObjectOperation": "DELETE", "zEndNeLabel": "SIG_HCO_018_1AG_A_CNCS55A2R001", "zEndPtpMoName": "TwentyFiveGigE0/0/0/24:1"},
+            {"aEndNeLabel": "BQG-BCLJK-HOB-T5-ER61.227", "aEndPtpMoName": "BS:MCIPS300C 25GE-ETY Port 22", "plannedObjectOperation": "ADD", "zEndNeLabel": "BQG-BCLJK-IAI-T5-ER9.121", "zEndPtpMoName": "MCIPS300C:SFP:p=21"},
+            {"aEndNeLabel": "BQG-BCLJK-IRA-T5-ER9.38", "aEndPtpMoName": "BS:MCIPS300C 25GE-ETY Port 22", "plannedObjectOperation": "DELETE", "zEndNeLabel": "GSND-BCLJK-MSCN-T5-ER61.222", "zEndPtpMoName": "BS:MCIPS300C 25GE-ETY Port 21"}
+        ],
+        "planNumber": "MPL/T5/NA-NP/MOB/17092026/002"
+    },
+    "errorCode": null,
+    "message": "Equipment and Link Details fetched Successfully",
+    "status": "SUCCESS"
+}

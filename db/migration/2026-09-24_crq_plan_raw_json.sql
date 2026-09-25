@@ -39,7 +39,7 @@
 CREATE TABLE IF NOT EXISTS CRQ_PLAN_RAW_JSON (
     raw_id       BIGINT       NOT NULL AUTO_INCREMENT,
     crq_no       VARCHAR(100) NOT NULL,
-    plan_number  VARCHAR(100) NOT NULL,
+    plan_number  VARCHAR(150) NOT NULL,
     api_status   VARCHAR(32)  NULL,
     api_message  VARCHAR(512) NULL,
     error_code   VARCHAR(100) NULL,
@@ -51,6 +51,10 @@ CREATE TABLE IF NOT EXISTS CRQ_PLAN_RAW_JSON (
     KEY idx_crq_plan_raw_crq_plan (crq_no, plan_number, created_at)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
+-- Same width as CRQ_PLAN_TBL.plan_no (a table created by an earlier run of
+-- this file had VARCHAR(100)). Widening only - safe to re-run.
+ALTER TABLE CRQ_PLAN_RAW_JSON MODIFY COLUMN plan_number VARCHAR(150) NOT NULL;
+
 
 -- ---------------------------------------------------------------------
 -- WRITE: insert_crq_plan_raw_json
@@ -59,30 +63,38 @@ DROP PROCEDURE IF EXISTS insert_crq_plan_raw_json;
 DELIMITER $$
 CREATE PROCEDURE insert_crq_plan_raw_json(
     IN p_Crq_No      VARCHAR(100),
-    IN p_Plan_Number VARCHAR(100),
-    IN p_Api_Status  VARCHAR(32),
-    IN p_Api_Message VARCHAR(512),
-    IN p_Error_Code  VARCHAR(100),
+    IN p_Plan_Number VARCHAR(150),
+    IN p_Api_Status  TEXT,
+    IN p_Api_Message TEXT,
+    IN p_Error_Code  TEXT,
     IN p_Payload     LONGTEXT,
     IN p_Equip_Count INT,
     IN p_Link_Count  INT
 )
 BEGIN
+    DECLARE v_err TEXT DEFAULT NULL;
+
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
         BEGIN
-            SELECT 'Failed to save plan raw json.' AS error_message;
+            GET DIAGNOSTICS CONDITION 1 v_err = MESSAGE_TEXT;
+            SELECT CONCAT('Failed to save plan raw json: ', IFNULL(v_err, '')) AS error_message;
         END;
 
     IF NULLIF(TRIM(IFNULL(p_Crq_No, '')), '') IS NULL
         OR NULLIF(TRIM(IFNULL(p_Plan_Number, '')), '') IS NULL THEN
         SELECT 'CRQ Number and Plan Number are required.' AS error_message;
+    ELSEIF p_Payload IS NULL OR JSON_VALID(p_Payload) = 0 THEN
+        SELECT 'Plan payload is not valid JSON.' AS error_message;
     ELSE
+        -- Text fields are cut to the column width: a long API message must
+        -- not make the whole audit insert fail under strict mode.
         INSERT INTO CRQ_PLAN_RAW_JSON
             (crq_no, plan_number, api_status, api_message, error_code,
              payload, equip_count, link_count)
         VALUES
-            (TRIM(p_Crq_No), TRIM(p_Plan_Number), p_Api_Status, p_Api_Message,
-             p_Error_Code, p_Payload, p_Equip_Count, p_Link_Count);
+            (TRIM(p_Crq_No), TRIM(p_Plan_Number),
+             LEFT(p_Api_Status, 32), LEFT(p_Api_Message, 512), LEFT(p_Error_Code, 100),
+             p_Payload, p_Equip_Count, p_Link_Count);
 
         SELECT 'Plan raw json saved.' AS success_message;
     END IF;
@@ -117,16 +129,21 @@ BEGIN
     DECLARE v_domain        VARCHAR(100) DEFAULT NULL;
     DECLARE v_activity      VARCHAR(500) DEFAULT NULL;
     DECLARE v_validation_id BIGINT       DEFAULT NULL;
+    DECLARE v_master_plan   BIGINT       DEFAULT NULL;
+    DECLARE v_task_rows     INT          DEFAULT 0;
+    DECLARE v_err           TEXT         DEFAULT NULL;
 
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
         BEGIN
+            GET DIAGNOSTICS CONDITION 1 v_err = MESSAGE_TEXT;
             ROLLBACK;
-            SELECT 'Failed to save validation details from plan.' AS error_message;
+            SELECT CONCAT('Failed to save validation details from plan: ', IFNULL(v_err, ''))
+                       AS error_message;
         END;
 
     SET v_crq_no = TRIM(p_Crq_No);
 
-    SELECT crq_id INTO v_crq_id
+    SELECT crq_id, plan_id INTO v_crq_id, v_master_plan
     FROM CRQ_MASTER_TBL
     WHERE crq_no = v_crq_no
     LIMIT 1;
@@ -136,10 +153,21 @@ BEGIN
     WHERE plan_no = TRIM(p_Plan_Number)
     LIMIT 1;
 
+    IF v_crq_id IS NOT NULL AND v_plan_id IS NOT NULL THEN
+        SELECT COUNT(*) INTO v_task_rows
+        FROM CRQ_TASK_TBL
+        WHERE crq_id = v_crq_id
+          AND plan_id = v_plan_id;
+    END IF;
+
     IF v_crq_id IS NULL THEN
         SELECT CONCAT('CRQ not found: ', IFNULL(p_Crq_No, '')) AS error_message;
     ELSEIF v_plan_id IS NULL THEN
         SELECT CONCAT('Plan not found: ', IFNULL(p_Plan_Number, '')) AS error_message;
+    ELSEIF NOT (v_plan_id <=> v_master_plan) AND v_task_rows = 0 THEN
+        -- Stops one CRQ's validation row being filled with another CRQ's plan
+        SELECT CONCAT('Plan ', TRIM(p_Plan_Number), ' is not linked to CRQ ', v_crq_no)
+                   AS error_message;
     ELSE
         SELECT task_id, domain, plan_activity_details
         INTO v_task_id, v_domain, v_activity

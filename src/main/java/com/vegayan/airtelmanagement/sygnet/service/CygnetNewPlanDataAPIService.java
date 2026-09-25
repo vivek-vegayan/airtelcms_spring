@@ -1,25 +1,31 @@
 package com.vegayan.airtelmanagement.sygnet.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.vegayan.airtelmanagement.common.dto.LogType;
 import com.vegayan.airtelmanagement.common.exception.BusinessException;
 import com.vegayan.airtelmanagement.common.service.BaseService;
+import com.vegayan.airtelmanagement.common.util.ProcedureCallFormatter;
 import com.vegayan.airtelmanagement.common.util.SslWebClientUtil;
-import com.vegayan.airtelmanagement.sygnet.dto.PlanDetailsResponse;
 import com.vegayan.airtelmanagement.sygnet.dto.PlanFetchRequest;
 import com.vegayan.airtelmanagement.sygnet.dto.PlanFetchResultDto;
-import com.vegayan.airtelmanagement.sygnet.service.CygnetTokenService;
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriComponentsBuilder;
+import reactor.core.publisher.Mono;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 
 /**
  * Fetches a plan from Cygnet (fetchPlanEquipmentAndLinkDetails) and fills
@@ -27,20 +33,42 @@ import java.util.TreeSet;
  *
  * Output format:
  *   NodeName           NODE_A,NODE_B,NODE_C
- *   NameInterfacePair  NODE_A$Bundle-Ether56,NODE_B$10GigE-9
+ *   NameInterfacePair  NODE_A$Bundle-Ether56,NODE_B$BS:MCIPS300C 25GE-ETY Port 22
  *
  * Rules:
  *   - nodes come from equipmentData[].neLabel and linkSummary[] A/Z end neLabel
  *   - pairs come from linkSummary only (equipmentData has no interface name)
  *   - interface "DUMMY" is dropped, but its node is still kept
- *   - values are trimmed, extra spaces collapsed, "" and "-" are ignored
+ *   - values are trimmed, repeated spaces collapsed to one (internal spaces
+ *     are kept), "" / "-" / null are ignored
  *   - output is sorted and de-duplicated
+ *
+ * The response is read as a JSON tree, not a fixed DTO, so any response
+ * shape is handled: missing or null arrays, missing/null/numeric fields,
+ * extra fields and non-SUCCESS replies all go through the same code path.
  */
 @Service
 public class CygnetNewPlanDataAPIService extends BaseService {
 
+    private static final Logger cygnetPlanDataAPI = LoggerFactory.getLogger("Cygnet_Plan_Data_API");
+
     private static final String PLAN_PATH = "/rest/changerequest/crqrest/fetchPlanEquipmentAndLinkDetails";
     private static final String DUMMY = "DUMMY";
+
+    /** WebClient's default in-memory limit is 256 KB - too small for a large plan. */
+    private static final int MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
+
+    /** Whitespace incl. non-breaking space, which String.trim()/\s miss. */
+    private static final Pattern SPACES = Pattern.compile("[\\s\\u00A0\\u2007\\u202F]+");
+
+    /** Node / interface field names for the two ends of a link. */
+    private static final String[][] LINK_ENDS = {
+            {"aEndNeLabel", "aEndPtpMoName"},
+            {"zEndNeLabel", "zEndPtpMoName"}
+    };
+
+    private static final String RAW_JSON_PROC = "CALL insert_crq_plan_raw_json(?, ?, ?, ?, ?, ?, ?, ?)";
+    private static final String UPSERT_PROC = "CALL upsert_crq_validation_from_plan(?, ?, ?, ?)";
 
     private final CygnetTokenService cygnetTokenService;
     private final ObjectMapper objectMapper;
@@ -64,7 +92,10 @@ public class CygnetNewPlanDataAPIService extends BaseService {
     @PostConstruct
     public void init() {
         try {
-            this.cygnetWebClient = SslWebClientUtil.buildTrustAllWebClient(60000, 60000);
+            this.cygnetWebClient = SslWebClientUtil.buildTrustAllWebClient(60000, 60000)
+                    .mutate()
+                    .codecs(codecs -> codecs.defaultCodecs().maxInMemorySize(MAX_RESPONSE_BYTES))
+                    .build();
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize WebClient", e);
         }
@@ -74,6 +105,7 @@ public class CygnetNewPlanDataAPIService extends BaseService {
         return "prod".equalsIgnoreCase(cygnetEnv) ? cygnetProdUrl : cygnetSitUrl;
     }
 
+    @LogType("Cygnet_Plan_Data_API")
     public PlanFetchResultDto fetchAndSavePlan(PlanFetchRequest request) {
         if (request == null) {
             throw new BusinessException("CRQ Number and Plan Number are required.");
@@ -85,89 +117,110 @@ public class CygnetNewPlanDataAPIService extends BaseService {
         String rawJson = callPlanApi(planNumber);
 
         // Step 2 : Parse
-        PlanDetailsResponse response;
-        try {
-            response = objectMapper.readValue(rawJson, PlanDetailsResponse.class);
-        } catch (Exception e) {
-            LOGGER.error("Unparseable plan response for plan {}: {}", planNumber, rawJson, e);
-            throw new BusinessException("Invalid response from Cygnet for plan " + planNumber);
+        JsonNode root = parseJson(rawJson, planNumber);
+        String status = text(root, "status");
+        String message = text(root, "message");
+        String errorCode = text(root, "errorCode");
+        JsonNode data = root.path("data");
+
+        // Step 3 : Save raw payload - also for a non-SUCCESS reply, so a
+        //          failed fetch can be checked later
+        Object[] rawArgs = {
+                crqNo, planNumber, status, message, errorCode, rawJson,
+                items(data.path("equipmentData")).size(),
+                items(data.path("linkSummary")).size()
+        };
+        // Full, runnable copy of the call. The automatic SQL_PROC log line
+        // cuts arguments over 256 chars, so that one cannot be re-run.
+        cygnetPlanDataAPI.info("[Cygnet Plan Fetch] {}", ProcedureCallFormatter.renderPreparedFull(RAW_JSON_PROC, rawArgs));
+        databaseUtils.executeProcedureWithError(jdbcTemplateTwo, RAW_JSON_PROC, rawArgs);
+
+        if (!"SUCCESS".equalsIgnoreCase(status)) {
+            throw new BusinessException("Cygnet returned status=" + status
+                    + ", errorCode=" + errorCode
+                    + ", message=" + message + " for plan " + planNumber);
         }
 
-        if (!response.isSuccess()) {
-            throw new BusinessException("Cygnet returned status=" + response.getStatus()
-                    + ", errorCode=" + response.getErrorCode()
-                    + ", message=" + response.getMessage() + " for plan " + planNumber);
+        // Guard against storing another plan's data under this CRQ
+        String returnedPlan = text(data, "planNumber");
+        if (returnedPlan != null && !returnedPlan.equalsIgnoreCase(planNumber)) {
+            throw new BusinessException("Cygnet returned plan " + returnedPlan
+                    + " but plan " + planNumber + " was requested.");
         }
 
-        List<PlanDetailsResponse.Equipment> equipmentList =
-                response.getData() == null ? null : response.getData().getEquipmentData();
-        List<PlanDetailsResponse.Link> linkList =
-                response.getData() == null ? null : response.getData().getLinkSummary();
-
-        // Step 3 : Extract nodes and node$interface pairs
-        Set<String> nodes = new TreeSet<>();
-        Set<String> pairs = new TreeSet<>();
-        int dummySkipped = 0;
-
-        if (equipmentList != null) {
-            for (PlanDetailsResponse.Equipment equipment : equipmentList) {
-                if (equipment == null) continue;
-                String node = normalize(equipment.getNeLabel());
-                if (node != null) {
-                    nodes.add(node);
-                }
-            }
-        }
-
-        if (linkList != null) {
-            for (PlanDetailsResponse.Link link : linkList) {
-                if (link == null) continue;
-                if (addLinkEnd(nodes, pairs, link.getAEndNeLabel(), link.getAEndPtpMoName())) {
-                    dummySkipped++;
-                }
-                if (addLinkEnd(nodes, pairs, link.getZEndNeLabel(), link.getZEndPtpMoName())) {
-                    dummySkipped++;
-                }
-            }
-        }
-
-        String nodeName = nodes.isEmpty() ? null : String.join(",", nodes);
-        String nameInterfacePair = pairs.isEmpty() ? null : String.join(",", pairs);
-
-        // Step 4 : Save raw payload
-        databaseUtils.executeProcedureWithError(
-                jdbcTemplateTwo,
-                "CALL insert_crq_plan_raw_json(?, ?, ?, ?, ?, ?, ?, ?)",
-                crqNo, planNumber, response.getStatus(), response.getMessage(),
-                response.getErrorCode(), rawJson,
-                equipmentList == null ? 0 : equipmentList.size(),
-                linkList == null ? 0 : linkList.size());
+        // Step 4 : Extract nodes and node$interface pairs
+        PlanFetchResultDto result = extractNodesAndPairs(root);
+        result.setCrqNo(crqNo);
+        result.setPlanNumber(planNumber);
 
         // Step 5 : Save into CRQ_VALIDATION_DETAILS_TBL (one row per CRQ + plan).
         //          Plan_Id, Task_Id, Domain and Plan_Activity_Details are
         //          resolved inside the procedure from the plan number.
         databaseUtils.executeProcedureWithError(
-                jdbcTemplateTwo,
-                "CALL upsert_crq_validation_from_plan(?, ?, ?, ?)",
-                crqNo, planNumber, nodeName, nameInterfacePair);
+                jdbcTemplateTwo, UPSERT_PROC,
+                crqNo, planNumber, result.getNodeName(), result.getNameInterfacePair());
 
-        if (nodes.isEmpty()) {
-            LOGGER.warn("Plan {} (crq {}) produced no nodes; equipment={} links={}",
-                    planNumber, crqNo,
-                    equipmentList == null ? 0 : equipmentList.size(),
-                    linkList == null ? 0 : linkList.size());
+        if (result.getNodeCount() == 0) {
+            cygnetPlanDataAPI.warn("[Cygnet Plan Fetch] Plan {} (crq {}) produced no nodes; equipment={} links={}",
+                    planNumber, crqNo, result.getEquipmentCount(), result.getLinkCount());
         }
-        LOGGER.info("Plan {} -> {} nodes, {} pairs ({} DUMMY interfaces dropped)",
-                planNumber, nodes.size(), pairs.size(), dummySkipped);
+        cygnetPlanDataAPI.info("[Cygnet Plan Fetch] Plan {} (crq {}) -> {} nodes, {} pairs ({} DUMMY interfaces dropped)",
+                planNumber, crqNo, result.getNodeCount(), result.getPairCount(), result.getDummySkipped());
+
+        return result;
+    }
+
+    /**
+     * Builds NodeName / NameInterfacePair from a plan response.
+     * No DB or network access - safe to call from tests or for re-processing
+     * a stored payload.
+     */
+    public PlanFetchResultDto extractNodesAndPairs(JsonNode root) {
+        Set<String> nodes = new TreeSet<>();
+        Set<String> pairs = new TreeSet<>();
+        int dummySkipped = 0;
+
+        JsonNode data = root == null ? null : root.path("data");
+        List<JsonNode> equipmentList = items(data == null ? null : data.path("equipmentData"));
+        List<JsonNode> linkList = items(data == null ? null : data.path("linkSummary"));
+
+        // equipmentData : node only
+        for (JsonNode equipment : equipmentList) {
+            String node = text(equipment, "neLabel");
+            if (node != null) {
+                nodes.add(node);
+            }
+        }
+
+        // linkSummary : A end and Z end, each a node + interface
+        for (JsonNode link : linkList) {
+            for (String[] end : LINK_ENDS) {
+                String node = text(link, end[0]);
+                if (node == null) {
+                    continue;
+                }
+                nodes.add(node);                        // node kept regardless
+
+                String iface = text(link, end[1]);
+                if (iface == null) {
+                    continue;
+                }
+                if (DUMMY.equalsIgnoreCase(iface)) {
+                    dummySkipped++;                     // node kept, interface dropped
+                    continue;
+                }
+                pairs.add(node + "$" + iface);
+            }
+        }
 
         PlanFetchResultDto result = new PlanFetchResultDto();
-        result.setCrqNo(crqNo);
-        result.setPlanNumber(planNumber);
-        result.setNodeName(nodeName);
-        result.setNameInterfacePair(nameInterfacePair);
+        result.setNodeName(nodes.isEmpty() ? null : String.join(",", nodes));
+        result.setNameInterfacePair(pairs.isEmpty() ? null : String.join(",", pairs));
         result.setNodeCount(nodes.size());
         result.setPairCount(pairs.size());
         result.setDummySkipped(dummySkipped);
+        result.setEquipmentCount(equipmentList.size());
+        result.setLinkCount(linkList.size());
         return result;
     }
 
@@ -178,9 +231,9 @@ public class CygnetNewPlanDataAPIService extends BaseService {
                 .build()
                 .toUri();
 
-        String cygnetToken = cygnetTokenService.fetchCygnetToken();
+        cygnetPlanDataAPI.info("[Cygnet Plan Data API] Final URI: {}", uri);
 
-        LOGGER.info("[Cygnet Plan Fetch] POST {} planNumber={}", uri, planNumber);
+        String cygnetToken = cygnetTokenService.fetchCygnetToken();
 
         String body = cygnetWebClient.post()
                 .uri(uri)
@@ -188,44 +241,70 @@ public class CygnetNewPlanDataAPIService extends BaseService {
                 .accept(MediaType.APPLICATION_JSON)
                 .header("auth-token", cygnetToken)
                 .bodyValue(Map.of("planNumber", planNumber))
-                .retrieve()
-                .bodyToMono(String.class)
+                .exchangeToMono(response -> {
+                    // 2xx and 4xx carry a JSON status/message we want to keep;
+                    // 5xx means Cygnet itself is down.
+                    if (response.statusCode().is5xxServerError()) {
+                        return response.createException().flatMap(Mono::error);
+                    }
+                    return response.bodyToMono(String.class);
+                })
                 .block();
 
+        cygnetPlanDataAPI.info("[Cygnet Plan Data API] Response from Cygnet:\n{}",
+                commonService.prettyPrintJson(body)
+        );
         if (body == null || body.isBlank()) {
             throw new BusinessException("Empty response from Cygnet for plan " + planNumber);
         }
         return body;
     }
 
-    /**
-     * Adds one link end. The node is always kept; the pair is added only
-     * when the interface is present and not DUMMY.
-     *
-     * @return true if a DUMMY interface was skipped
-     */
-    private boolean addLinkEnd(Set<String> nodes, Set<String> pairs, String rawNode, String rawInterface) {
-        String node = normalize(rawNode);
-        if (node == null) {
-            return false;
+    private JsonNode parseJson(String rawJson, String planNumber) {
+        try {
+            JsonNode root = objectMapper.readTree(rawJson);
+            if (root == null || !root.isObject()) {
+                throw new IllegalStateException("not a JSON object");
+            }
+            return root;
+        } catch (Exception e) {
+            cygnetPlanDataAPI.error("[Cygnet Plan Fetch] Unparseable response for plan {}: {}", planNumber, rawJson, e);
+            throw new BusinessException("Invalid response from Cygnet for plan " + planNumber);
         }
-        nodes.add(node);
+    }
 
-        String iface = normalize(rawInterface);
-        if (iface == null) {
-            return false;
+    /** Elements of a JSON array; empty for null / missing / non-array. */
+    private static List<JsonNode> items(JsonNode node) {
+        if (node == null || !node.isArray()) {
+            return List.of();
         }
-        if (DUMMY.equalsIgnoreCase(iface)) {
-            return true;
+        List<JsonNode> list = new ArrayList<>(node.size());
+        for (JsonNode item : node) {
+            if (item != null && item.isObject()) {
+                list.add(item);
+            }
         }
-        pairs.add(node + "$" + iface);
-        return false;
+        return list;
+    }
+
+    /** Normalised text of a field; null when missing, JSON null, object/array or blank. */
+    private static String text(JsonNode node, String field) {
+        if (node == null) {
+            return null;
+        }
+        JsonNode value = node.path(field);
+        if (!value.isValueNode() || value.isNull()) {
+            return null;
+        }
+        return normalize(value.asText());
     }
 
     /** trim, collapse multiple spaces to one, "" and "-" become null. */
-    private static String normalize(String value) {
-        if (value == null) return null;
-        String cleaned = value.trim().replaceAll("\\s+", " ");
+    static String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        String cleaned = SPACES.matcher(value).replaceAll(" ").trim();
         if (cleaned.isEmpty() || "-".equals(cleaned)) {
             return null;
         }

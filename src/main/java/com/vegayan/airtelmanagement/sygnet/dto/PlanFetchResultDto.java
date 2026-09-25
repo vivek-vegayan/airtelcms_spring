@@ -13,4 +13,6 @@ public class PlanFetchResultDto {
     private int nodeCount;
     private int pairCount;
     private int dummySkipped;
+    private int equipmentCount;
+    private int linkCount;
 }

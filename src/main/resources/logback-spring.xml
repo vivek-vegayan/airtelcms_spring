@@ -279,6 +279,25 @@
 
 
     <!-- ========================================================= -->
+    <!-- 6) CRQ_STATUS_UPDATE_EXTERNAL_APPENDER -->
+    <!-- ========================================================= -->
+    <appender name="CYGNET_PLAN_DATA_API_EXTERNAL_APPENDER"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>
+                ${LOG_DIR}/%d{yyyy-MM-dd}/Cygnet_Plan_Data_API-%d{yyyy-MM-dd}.log
+            </fileNamePattern>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ========================================================= -->
     <!-- Logger                          -->
     <!-- ========================================================= -->
     <!--
@@ -339,6 +358,12 @@
     <logger name="Schedule_Reschedule_Crq" level="INFO" additivity="false">
         <appender-ref ref="SCHEDULE_RESCHEDULE_CRQ_APPENDER"/>
     </logger>
+
+    <logger name="Cygnet_Plan_Data_API" level="INFO" additivity="false">
+        <appender-ref ref="CYGNET_PLAN_DATA_API_EXTERNAL_APPENDER"/>
+    </logger>
+
+
 
 
 

@@ -3,6 +3,7 @@ package com.vegayan.airtelmanagement.sygnet.controller;
 import com.vegayan.airtelmanagement.audit.AuditAction;
 import com.vegayan.airtelmanagement.audit.AuditModule;
 import com.vegayan.airtelmanagement.audit.annotation.Auditable;
+import com.vegayan.airtelmanagement.common.dto.LogType;
 import com.vegayan.airtelmanagement.sygnet.dto.PlanFetchRequest;
 import com.vegayan.airtelmanagement.sygnet.dto.PlanFetchResultDto;
 import com.vegayan.airtelmanagement.sygnet.service.CygnetNewPlanDataAPIService;
@@ -18,6 +19,7 @@ public class CygnetNewPlanDataAPIController {
         this.cygnetNewPlanDataAPIService = cygnetNewPlanDataAPIService;
     }
 
+    @LogType("Cygnet_Plan_Data_API")
     @Auditable(module = AuditModule.SCHEDULER,
                subModule = AuditModule.SUB_CRQ_VALIDATION,
                action = AuditAction.UPDATE,
