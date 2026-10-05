@@ -1,6 +1,7 @@
 package com.vegayan.airtelmanagement.rostergeneration.controller;
 
 import com.vegayan.airtelmanagement.common.dto.ApiResponse;
+import com.vegayan.airtelmanagement.rostergeneration.dto.FutureWeekAddToRosterRequest;
 import com.vegayan.airtelmanagement.rostergeneration.dto.FutureWeekResponseDto;
 import com.vegayan.airtelmanagement.rostergeneration.dto.FutureWeekUpdateRequest;
 import com.vegayan.airtelmanagement.rostergeneration.service.FutureWeekService;
@@ -53,6 +54,23 @@ public class FutureWeekController {
                 futureWeekService.updateFutureWeekBatch(
                         actorUserId,
                         requests
+                );
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/futureweek/addtoroster")
+    public ResponseEntity<ApiResponse> addFutureWeekToRoster(
+            @RequestBody FutureWeekAddToRosterRequest request,
+            Authentication authentication
+    ) {
+
+        String actorUserId = authentication.getName();
+        // subDomainId 0 = "ALL": every sub domain of domainId.
+        ApiResponse response =
+                futureWeekService.addFutureWeekToRoster(
+                        actorUserId,
+                        request
                 );
 
         return ResponseEntity.ok(response);

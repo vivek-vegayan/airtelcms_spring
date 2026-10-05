@@ -2,6 +2,7 @@ package com.vegayan.airtelmanagement.rostergeneration.service;
 
 import com.vegayan.airtelmanagement.common.dto.ApiResponse;
 import com.vegayan.airtelmanagement.common.service.BaseService;
+import com.vegayan.airtelmanagement.rostergeneration.dto.FutureWeekAddToRosterRequest;
 import com.vegayan.airtelmanagement.rostergeneration.dto.FutureWeekResponseDto;
 import com.vegayan.airtelmanagement.rostergeneration.dto.FutureWeekRowDto;
 import com.vegayan.airtelmanagement.rostergeneration.dto.FutureWeekUpdateRequest;
@@ -128,6 +129,35 @@ public class FutureWeekService extends BaseService {
                 .build();
     }
 
+
+    /**
+     * Generate Roster - copy the future week (Week 7) into the roster
+     */
+    @Transactional
+    public ApiResponse addFutureWeekToRoster(
+            String actorUserId,
+            FutureWeekAddToRosterRequest request
+    ) {
+
+        String sql = "CALL sp_add_future_week_to_roster(?, ?, ?, ?)";
+
+        LOGGER.info(
+                "call sp_add_future_week_to_roster('{}', '{}', '{}', {});",
+                actorUserId,
+                request.domainId(),
+                request.subDomainId(),
+                request.isoWeek()
+        );
+
+        return databaseUtils.executeProcedureForMessageV1(
+                jdbcTemplateTwo,
+                sql,
+                actorUserId,
+                request.domainId(),
+                request.subDomainId(),
+                request.isoWeek()
+        );
+    }
 
     /**
      * Total employee count
