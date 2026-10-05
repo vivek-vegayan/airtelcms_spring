@@ -37,6 +37,7 @@ public class BaseCrqDto {
     private String        planActivityDetails;
     private String        activitySequence;
     private String        locationCodeM6;
+    private String        crqCircle;
     private String        taskProfileType;
 
     private LocalDateTime executionSlotStart;
