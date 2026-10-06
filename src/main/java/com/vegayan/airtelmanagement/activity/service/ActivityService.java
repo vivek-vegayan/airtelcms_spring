@@ -197,6 +197,32 @@ public class ActivityService extends BaseService {
     }
 
 
+    public List<LayerDropdownDto> getLayerDropdown() {
+
+        String sql = "CALL sp_get_layer_filter_dropdown()";
+
+        LOGGER.info("call sp_get_layer_filter_dropdown();");
+
+        return databaseUtils.executeProcedureGetDataWithError(
+                jdbcTemplateTwo,
+                sql,
+                LayerDropdownDto.class
+        );
+    }
+
+    public List<NetworkDomainDropdownDto> getNetworkDomainDropdown() {
+
+        String sql = "CALL sp_get_domain_dropdown()";
+
+        LOGGER.info("call sp_get_domain_dropdown();");
+
+        return databaseUtils.executeProcedureGetDataWithError(
+                jdbcTemplateTwo,
+                sql,
+                NetworkDomainDropdownDto.class
+        );
+    }
+
     public ApiResponse insertPlan(Long actorUserId, InsertPlanDto request) {
 
         String sql = "CALL sp_insert_plan(?,?,?,?,?,?,?,?)";

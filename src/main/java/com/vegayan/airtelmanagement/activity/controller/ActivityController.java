@@ -3,6 +3,8 @@ package com.vegayan.airtelmanagement.activity.controller;
 import com.vegayan.airtelmanagement.activity.dto.ActivityDTO;
 import com.vegayan.airtelmanagement.activity.dto.ActivityInsertRequestDTO;
 import com.vegayan.airtelmanagement.activity.dto.ActivityPhaseViewDTO;
+import com.vegayan.airtelmanagement.activity.dto.LayerDropdownDto;
+import com.vegayan.airtelmanagement.activity.dto.NetworkDomainDropdownDto;
 import com.vegayan.airtelmanagement.activity.dto.UpdateActivityPhaseDto;
 import com.vegayan.airtelmanagement.activity.dto.UpdatePlanDto;
 import com.vegayan.airtelmanagement.activity.service.ActivityService;
@@ -89,6 +91,16 @@ public class ActivityController {
                 .body(response);
     }
 
+
+    @GetMapping("/layerdropdown")
+    public List<LayerDropdownDto> getLayerDropdown() {
+        return activityService.getLayerDropdown();
+    }
+
+    @GetMapping("/networkdomaindropdown")
+    public List<NetworkDomainDropdownDto> getNetworkDomainDropdown() {
+        return activityService.getNetworkDomainDropdown();
+    }
 
     @PostMapping("/insertPlan")
     public ResponseEntity<ApiResponse> insertPlan(
