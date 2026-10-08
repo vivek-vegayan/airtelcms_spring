@@ -18,11 +18,11 @@ import java.util.stream.Collectors;
 @Service
 public class GlobalSettingsPermissionService extends BaseService {
 
-    public List<RoleModel> getRoles() {
-        String sql = "CALL sp_get_roles()";
-        LOGGER.info("call sp_get_roles();");
+    public List<RoleModel> getRoles(Long actorUserId) {
+        String sql = "CALL sp_get_roles(?)";
+        LOGGER.info("call sp_get_roles('{}');", actorUserId);
         return databaseUtils.executeProcedureGetDataWithError(
-                jdbcTemplateTwo, sql, RoleModel.class);
+                jdbcTemplateTwo, sql, RoleModel.class, actorUserId);
     }
 
     public List<ModuleModel> getModuleDropdown() {

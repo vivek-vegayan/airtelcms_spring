@@ -30,8 +30,9 @@ public class GlobalSettingsPermissionController {
     // ── Dropdowns ───────────────────────────────────────────
 
     @GetMapping("/dropdown/roles")
-    public ResponseEntity<List<RoleModel>> getRoles() {
-        return ResponseEntity.ok(permissionService.getRoles());
+    public ResponseEntity<List<RoleModel>> getRoles(Authentication authentication) {
+        Long actorUserId = Long.parseLong(authentication.getName());
+        return ResponseEntity.ok(permissionService.getRoles(actorUserId));
     }
 
     @GetMapping("/dropdown/modules")

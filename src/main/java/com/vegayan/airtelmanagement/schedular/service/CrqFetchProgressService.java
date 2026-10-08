@@ -16,8 +16,8 @@ import java.util.Set;
  *
  * The fetch daemon runs 24x7 and starts jobs by itself, so the UI never gets
  * a job id from a "start" call - it looks the newest job up by CRQ number and
- * stage. Both queries here are cheap single-row reads, since every open
- * review dialog polls the GET every ~1.5s while a job is running.
+ * stage. Every open review dialog polls the GET every ~1.5s while a job is
+ * running, so the procedures behind it must stay cheap.
  */
 @Service
 public class CrqFetchProgressService extends BaseService {
@@ -27,44 +27,48 @@ public class CrqFetchProgressService extends BaseService {
 
     private static final Set<String> STAGES = Set.of("VALIDATE", "IMPACT_ANALYSIS");
 
-    private static final String LATEST_JOB_SQL =
-            "SELECT Job_Id, Crq_No, Plan_Id, Stage, Run_Type, Batch_No, Stage_Label, " +
-            "       Status, Total_Units, Done_Units, Failed_Units, Percent, " +
-            "       Current_Item, Elapsed_Sec, Heartbeat_Age, Finished, Error_Text " +
-            "FROM V_CRQ_FETCH_JOB " +
-            "WHERE Crq_No = ? AND Stage = ? " +
-            "ORDER BY COALESCE(Finished_At, Heartbeat_At) DESC, Job_Id DESC " +
-            "LIMIT 1";
-
-    // The daemon checks this between units (JobTracker.is_cancelled), so a
-    // cancel takes effect mid-job. Finished jobs are left untouched.
-    private static final String CANCEL_JOB_SQL =
-            "UPDATE CRQ_FETCH_JOB_TBL " +
-            "SET Status = 'CANCELLED', Finished_At = NOW(), Heartbeat_At = NOW() " +
-            "WHERE Job_Id = ? AND Status IN ('QUEUED','RUNNING')";
-
     /** Newest fetch job for the CRQ and stage, or null when the daemon has not started one yet. */
     public CrqFetchProgressDto getLatestJob(String crqNo, String stage) {
-        String trimmedCrqNo = crqNo == null ? "" : crqNo.trim();
-        if (trimmedCrqNo.isEmpty()) {
-            throw new BusinessException("CRQ Number is required.");
-        }
+        String trimmedCrqNo = requireCrqNo(crqNo);
         String normalizedStage = stage == null ? "VALIDATE" : stage.trim().toUpperCase();
         if (!STAGES.contains(normalizedStage)) {
             throw new BusinessException("Unsupported fetch stage: " + stage);
         }
 
+        LOGGER.info("call SP_GET_V_CRQ_FETCH_JOB('{}','{}');", trimmedCrqNo, normalizedStage);
         List<CrqFetchProgressDto> rows = jdbcTemplateTwo.query(
-                LATEST_JOB_SQL, (rs, rowNum) -> mapRow(rs), trimmedCrqNo, normalizedStage);
+                "CALL SP_GET_V_CRQ_FETCH_JOB(?, ?)",
+                (rs, rowNum) -> mapRow(rs), trimmedCrqNo, normalizedStage);
         return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    /** Every Impact Analysis batch job for the CRQ; empty until the daemon starts one. */
+    public List<CrqFetchProgressDto> getImpactBatches(String crqNo) {
+        // Batch1..4 per run type. A batch that was re-run has several rows; the
+        // procedure orders them oldest -> newest so the UI can keep the last.
+        String trimmedCrqNo = requireCrqNo(crqNo);
+        LOGGER.info("call SP_V_CRQ_FETCH_IMPACT_ANALYSIS('{}');", trimmedCrqNo);
+        return jdbcTemplateTwo.query(
+                "CALL SP_V_CRQ_FETCH_IMPACT_ANALYSIS(?)",
+                (rs, rowNum) -> mapRow(rs), trimmedCrqNo);
+    }
+
+    private static String requireCrqNo(String crqNo) {
+        String trimmed = crqNo == null ? "" : crqNo.trim();
+        if (trimmed.isEmpty()) {
+            throw new BusinessException("CRQ Number is required.");
+        }
+        return trimmed;
     }
 
     public ApiResponse cancelJob(Long jobId) {
         if (jobId == null) {
             throw new BusinessException("Job Id is required.");
         }
-        LOGGER.info("Cancelling CRQ fetch job {}", jobId);
-        int updated = jdbcTemplateTwo.update(CANCEL_JOB_SQL, jobId);
+        // The daemon checks this between units (JobTracker.is_cancelled), so a
+        // cancel takes effect mid-job. Finished jobs are left untouched.
+        LOGGER.info("call SP_V_CRQ_CANCEL_JOB('{}');", jobId);
+        int updated = jdbcTemplateTwo.update("CALL SP_V_CRQ_CANCEL_JOB(?)", jobId);
         if (updated == 0) {
             throw new BusinessException("Fetch job " + jobId + " is not running - nothing to cancel.");
         }

@@ -58,7 +58,8 @@ public class EmployeeExcelService extends BaseService {
 
     private List<ColumnDef> buildColumnDefs() {
         DataFormatter fmt = new DataFormatter();
-        Function<Cell, String> text = c -> c == null ? "" : fmt.formatCellValue(c);
+        Function<Cell, String> text  = c -> c == null ? "" : cleanText(fmt.formatCellValue(c));
+        Function<Cell, String> email = c -> c == null ? "" : cleanEmail(fmt.formatCellValue(c));
 
         return List.of(
                 // 0
@@ -66,7 +67,7 @@ public class EmployeeExcelService extends BaseService {
                 // 1
                 new ColumnDef("Employee Name",                ColType.TEXT,            null,                                             false, text, EmployeeExcelRowDto::setEmployeeName),
                 // 2
-                new ColumnDef("Email",                        ColType.TEXT,            null,                                             false, text, EmployeeExcelRowDto::setEmailId),
+                new ColumnDef("Email",                        ColType.TEXT,            null,                                             false, email, EmployeeExcelRowDto::setEmailId),
                 // 3
                 new ColumnDef("Mobile",                       ColType.TEXT,            null,                                             false, text, EmployeeExcelRowDto::setMobileNo),
                 // 4
@@ -550,6 +551,19 @@ public class EmployeeExcelService extends BaseService {
 
     private String nullToEmpty(String s) {
         return s == null ? "" : s;
+    }
+
+    /** Trims regular, non-breaking (U+00A0) and zero-width whitespace that copy-paste leaves behind. */
+    private static String cleanText(String s) {
+        if (s == null) return "";
+        return s.replaceAll("[\\u200B-\\u200D\\uFEFF]", "")
+                .replaceAll("^[\\s\\u00A0]+|[\\s\\u00A0]+$", "");
+    }
+
+    /** Emails never contain spaces; also drops a "mailto:" prefix left by Excel/Outlook hyperlinks. */
+    private static String cleanEmail(String s) {
+        String v = cleanText(s).replaceAll("[\\s\\u00A0]+", "");
+        return v.regionMatches(true, 0, "mailto:", 0, 7) ? v.substring(7) : v;
     }
 
     // ─────────────────────────────────────────────────────────────────────────

@@ -158,7 +158,8 @@ public class AttributeUpdateService extends BaseService {
 
         values.put("Infrastructure Change ID", request.getCrqNo());
         values.put("z1D_Action", "Update_Change");
-        values.put("Description", "Updated Summary via API");
+        //        values.put("Description", "Updated Summary via API");
+        values.put("Description", null);
         values.put("Performance Rating", "4");
         values.put("retryFlag", "No");
 

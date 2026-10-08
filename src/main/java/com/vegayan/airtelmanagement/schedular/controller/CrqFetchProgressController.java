@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/crqworkflow/fetch")
 @RequiredArgsConstructor
@@ -25,6 +27,13 @@ public class CrqFetchProgressController {
             @RequestParam(defaultValue = "VALIDATE") String stage) {
         CrqFetchProgressDto job = crqFetchProgressService.getLatestJob(crqNo, stage);
         return job == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(job);
+    }
+
+    // Impact Analysis batch strip (Batch1..4) - an empty list until the
+    // daemon has run any batch for this CRQ.
+    @GetMapping("/by-crq/{crqNo}/batches")
+    public List<CrqFetchProgressDto> getImpactBatches(@PathVariable String crqNo) {
+        return crqFetchProgressService.getImpactBatches(crqNo);
     }
 
     @Auditable(module = AuditModule.SCHEDULER,

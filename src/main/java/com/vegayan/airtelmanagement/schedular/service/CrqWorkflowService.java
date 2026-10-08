@@ -105,66 +105,133 @@ public class CrqWorkflowService extends BaseService {
 
     //------------------------STAGE HISTORY-------------------------------------------------
 
-    private PlanResponseDtoNew withStageHistory(PlanResponseDtoNew response,
-                                                Long domainId, Long subDomainId,
-                                                String listingStage) {
+    /** Max crq_nos per IN (...) lookup when back-filling missing current stages. */
+    private static final int CURRENT_STAGE_LOOKUP_CHUNK = 500;
+
+    /**
+     * Listing endpoints: resolves each CRQ's current stage and `actionable`
+     * flag only. History is NOT attached here any more - loading it for every
+     * CRQ in the domain/sub-domain was the main cost of each listing; the UI
+     * now loads it per CRQ on demand via {@link #getStageHistoryByCrqNo}.
+     *
+     * Rows whose procedure didn't carry a current stage are back-filled from
+     * CRQ_MASTER_TBL with one keyed lookup for just those CRQs.
+     */
+    private PlanResponseDtoNew withCurrentStage(PlanResponseDtoNew response, String listingStage) {
         if (response == null || response.getPlans() == null || response.getPlans().isEmpty()) {
             return response;
         }
 
-        List<StageHistoryRowDto> rows;
-        try {
-            rows = databaseUtils.executeProcedureGetDataWithError(
-                    jdbcTemplateTwo,
-                    "CALL Get_CRQ_Stage_History(?,?)",
-                    StageHistoryRowDto.class,
-                    domainId, String.valueOf(subDomainId));
-        } catch (Exception e) {
-            // History must never break the main listing (legacy CRQs, etc).
-            LOGGER.error("Stage history fetch failed for domain {} / sub-domain {}: {}",
-                    domainId, subDomainId, e.getMessage());
-            rows = Collections.emptyList();
+        Set<String> missing = new LinkedHashSet<>();
+        for (PlanDtoNew plan : response.getPlans()) {
+            if (plan.getCrqs() == null) continue;
+            for (BaseCrqDto crq : plan.getCrqs()) {
+                if (crq.getCurrentStage() == null && crq.getCrqNo() != null) {
+                    missing.add(crq.getCrqNo());
+                }
+            }
         }
+        Map<String, String> stageByCrqNo = lookupCurrentStages(missing);
 
-        Map<String, List<StageHistoryRowDto>> byCrqNo = new HashMap<>();
+        for (PlanDtoNew plan : response.getPlans()) {
+            if (plan.getCrqs() == null) continue;
+            for (BaseCrqDto crq : plan.getCrqs()) {
+                String currentStage = crq.getCurrentStage();
+                if (currentStage == null) {
+                    currentStage = stageByCrqNo.get(crq.getCrqNo());
+                    crq.setCurrentStage(currentStage);
+                }
+                crq.setActionable(listingStage != null
+                        ? listingStage.equals(currentStage)
+                        : currentStage != null);
+            }
+        }
+        return response;
+    }
+
+    private Map<String, String> lookupCurrentStages(Collection<String> crqNos) {
+        if (crqNos.isEmpty()) return Collections.emptyMap();
+        Map<String, String> result = new HashMap<>();
+        List<String> all = new ArrayList<>(crqNos);
+        try {
+            for (int from = 0; from < all.size(); from += CURRENT_STAGE_LOOKUP_CHUNK) {
+                List<String> chunk = all.subList(from, Math.min(from + CURRENT_STAGE_LOOKUP_CHUNK, all.size()));
+                String placeholders = String.join(",", Collections.nCopies(chunk.size(), "?"));
+                jdbcTemplateTwo.query(
+                        "SELECT crq_no, current_stage FROM CRQ_MASTER_TBL WHERE crq_no IN (" + placeholders + ")",
+                        rs -> { result.put(rs.getString("crq_no"), rs.getString("current_stage")); },
+                        chunk.toArray());
+            }
+        } catch (Exception e) {
+            // Must never break the main listing - the CRQs just stay non-actionable.
+            LOGGER.error("Current stage lookup failed for {} CRQs: {}", crqNos.size(), e.getMessage());
+        }
+        return result;
+    }
+
+    /**
+     * Stage history of exactly one CRQ (~7 rows), sorted in workflow order.
+     * Backs GET /crqworkflow/{crqNo}/history (cards expanded / review dialogs
+     * opened on the listing pages) and the single-CRQ cockpit endpoint.
+     */
+    public List<StageHistoryEntryDto> getStageHistoryByCrqNo(String crqNo) {
+        List<StageHistoryRowDto> rows = databaseUtils.executeProcedureGetDataWithError(
+                jdbcTemplateTwo,
+                "CALL Get_CRQ_Stage_History_By_Crq_No(?)",
+                StageHistoryRowDto.class,
+                crqNo);
+        return toHistoryEntries(rows);
+    }
+
+    private List<StageHistoryEntryDto> toHistoryEntries(List<StageHistoryRowDto> rows) {
+        List<StageHistoryEntryDto> history = new ArrayList<>(rows.size());
         for (StageHistoryRowDto row : rows) {
-            byCrqNo.computeIfAbsent(row.getCrqNo(), k -> new ArrayList<>()).add(row);
+            boolean isCurrent = Boolean.TRUE.equals(row.getIsCurrent());
+            history.add(StageHistoryEntryDto.builder()
+                    .stage(row.getStage())
+                    .stageKey(STAGE_KEYS.get(row.getStage()))
+                    .stageLabel(STAGE_LABELS.get(row.getStage()))
+                    .status(row.getStageStatus())
+                    .assignedTo(row.getAssignedTo())
+                    .performedBy(row.getPerformedBy())
+                    .startedAt(row.getStageStartDate())
+                    .completedAt(row.getStageEndDate())
+                    .current(isCurrent)
+                    .readOnly(!isCurrent)
+                    .build());
+        }
+        history.sort(Comparator.comparingInt(e -> stageOrder(e.getStage())));
+        return history;
+    }
+
+    /**
+     * Single-CRQ responses (the cockpit's main panel) still carry full
+     * history - it's one CRQ, so the per-CRQ procedure is cheap.
+     */
+    private PlanResponseDtoNew withStageHistoryForCrq(PlanResponseDtoNew response, String crqNo) {
+        withCurrentStage(response, null);
+        if (response == null || response.getPlans() == null) return response;
+
+        List<StageHistoryEntryDto> history;
+        try {
+            history = getStageHistoryByCrqNo(crqNo);
+        } catch (Exception e) {
+            // History must never break the main panel (legacy CRQs, etc).
+            LOGGER.error("Stage history fetch failed for CRQ {}: {}", crqNo, e.getMessage());
+            history = Collections.emptyList();
         }
 
         for (PlanDtoNew plan : response.getPlans()) {
             if (plan.getCrqs() == null) continue;
             for (BaseCrqDto crq : plan.getCrqs()) {
-                List<StageHistoryRowDto> crqRows =
-                        byCrqNo.getOrDefault(crq.getCrqNo(), Collections.emptyList());
-
-                String currentStage = crq.getCurrentStage();
-                if (currentStage == null && !crqRows.isEmpty()) {
-                    currentStage = crqRows.get(0).getCurrentStage();
-                    crq.setCurrentStage(currentStage);
+                if (crq.getCurrentStage() == null && !history.isEmpty()) {
+                    history.stream().filter(StageHistoryEntryDto::isCurrent).findFirst()
+                            .ifPresent(h -> {
+                                crq.setCurrentStage(h.getStage());
+                                crq.setActionable(true);
+                            });
                 }
-
-                List<StageHistoryEntryDto> history = new ArrayList<>(crqRows.size());
-                for (StageHistoryRowDto row : crqRows) {
-                    boolean isCurrent = Boolean.TRUE.equals(row.getIsCurrent());
-                    history.add(StageHistoryEntryDto.builder()
-                            .stage(row.getStage())
-                            .stageKey(STAGE_KEYS.get(row.getStage()))
-                            .stageLabel(STAGE_LABELS.get(row.getStage()))
-                            .status(row.getStageStatus())
-                            .assignedTo(row.getAssignedTo())
-                            .performedBy(row.getPerformedBy())
-                            .startedAt(row.getStageStartDate())
-                            .completedAt(row.getStageEndDate())
-                            .current(isCurrent)
-                            .readOnly(!isCurrent)
-                            .build());
-                }
-                history.sort(Comparator.comparingInt(e -> stageOrder(e.getStage())));
                 crq.setHistory(history);
-
-                crq.setActionable(listingStage != null
-                        ? listingStage.equals(currentStage)
-                        : currentStage != null);
             }
         }
         return response;
@@ -358,7 +425,7 @@ public class CrqWorkflowService extends BaseService {
                 CrqReviewDto.class,
                 actorUserId, domainId, subDomainId
         );
-        return withStageHistory(builder.build(flat), domainId, subDomainId, "VALIDATE");
+        return withCurrentStage(builder.build(flat), "VALIDATE");
     }
 
     public ApiResponse updateCrqReviewStatus(Long actorUserId, String crqNo, String crqId) {
@@ -461,7 +528,7 @@ public class CrqWorkflowService extends BaseService {
                 ImpactAnalysisDto.class,
                 actorUserId, domainId, subDomainId
         );
-        return withStageHistory(builder.build(flat), domainId, subDomainId, "IMPACT_ANALYSIS");
+        return withCurrentStage(builder.build(flat), "IMPACT_ANALYSIS");
     }
 
     public ApiResponse updateImpactAnalysisStatusToDone(
@@ -679,7 +746,7 @@ public class CrqWorkflowService extends BaseService {
                 MopCreateDto.class,
                 userId, domainId, subDomainId
         );
-        return withStageHistory(builder.build(flat), domainId, subDomainId, "MOP_CREATION");
+        return withCurrentStage(builder.build(flat), "MOP_CREATION");
     }
 
     public ApiResponse updateMopCreateStatus(Long actorUserId, String crqNo, String crqId) {
@@ -783,7 +850,7 @@ public class CrqWorkflowService extends BaseService {
                 MopValidateDto.class,
                 userId, domainId, subDomainId
         );
-        return withStageHistory(builder.build(flat), domainId, subDomainId, "MOP_VALIDATION");
+        return withCurrentStage(builder.build(flat), "MOP_VALIDATION");
     }
 
     public ApiResponse updateMopValidateStatus(Long actorUserId, String crqNo, String crqId) {
@@ -887,7 +954,7 @@ public class CrqWorkflowService extends BaseService {
                 SchedulingDto.class,
                 userId, domainId, subDomainId
         );
-        return withStageHistory(builder.build(flat), domainId, subDomainId, "SCHEDULING_APPROVAL");
+        return withCurrentStage(builder.build(flat), "SCHEDULING_APPROVAL");
     }
 
     public ApiResponse updateSchedulingStatus(Long actorUserId, String crqNo, String crqId) {
@@ -1030,7 +1097,7 @@ public class CrqWorkflowService extends BaseService {
                 ActivityImplementDto.class,
                 userId, domainId, subDomainId
         );
-        return withStageHistory(builder.build(flat), domainId, subDomainId, "EXECUTION");
+        return withCurrentStage(builder.build(flat), "EXECUTION");
     }
 
     public ApiResponse updateActivityImplementStatus(Long actorUserId, String crqNo, String crqId) {
@@ -1133,7 +1200,7 @@ public class CrqWorkflowService extends BaseService {
                 CrqCloserDto.class,
                 userId, domainId, subDomainId
         );
-        return withStageHistory(builder.build(flat), domainId, subDomainId, "CLOSURE");
+        return withCurrentStage(builder.build(flat), "CLOSURE");
     }
 
     public ApiResponse updateCloserStatus(Long actorUserId, String crqNo, String crqId) {
@@ -1249,7 +1316,7 @@ public class CrqWorkflowService extends BaseService {
                 CrqOverviewDto.class,
                 userId, domainId, String.valueOf(subDomainId)
         );
-        return withStageHistory(builder.build(flat), domainId, subDomainId, null);
+        return withCurrentStage(builder.build(flat), null);
     }
 
     public PageResponseDto<PlanDtoNew> getWorkflowOverviewPaged(
@@ -1277,8 +1344,8 @@ public class CrqWorkflowService extends BaseService {
         );
         long totalElements = (count != null && count.getTotalCount() != null) ? count.getTotalCount() : 0L;
 
-        PlanResponseDtoNew withHistory = withStageHistory(builder.build(flat), domainId, subDomainId, null);
-        List<PlanDtoNew> plans = withHistory.getPlans() != null ? withHistory.getPlans() : Collections.emptyList();
+        PlanResponseDtoNew built = withCurrentStage(builder.build(flat), null);
+        List<PlanDtoNew> plans = built.getPlans() != null ? built.getPlans() : Collections.emptyList();
 
         return PaginationUtils.buildPageResponse(plans, PageRequest.of(safePage, safeSize), totalElements);
     }
@@ -1293,7 +1360,7 @@ public class CrqWorkflowService extends BaseService {
                 CrqOverviewDto.class,
                 userId, domainId, String.valueOf(subDomainId), crqNo
         );
-        return withStageHistory(builder.build(flat), domainId, subDomainId, null);
+        return withStageHistoryForCrq(builder.build(flat), crqNo);
     }
 
     //----------------------------GLOBAL CRQ SEARCH-----------------------------------------

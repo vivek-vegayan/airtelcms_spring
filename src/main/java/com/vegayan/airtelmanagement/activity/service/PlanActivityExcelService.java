@@ -2,6 +2,7 @@ package com.vegayan.airtelmanagement.activity.service;
 
 import com.vegayan.airtelmanagement.activity.dto.ActivityPhaseViewDTO;
 import com.vegayan.airtelmanagement.activity.dto.PlanActivityExcelParseResponseDto;
+import com.vegayan.airtelmanagement.activity.dto.PlanActivityExcelPhaseDto;
 import com.vegayan.airtelmanagement.activity.dto.PlanActivityExcelRowDto;
 import com.vegayan.airtelmanagement.activity.dto.PlanActivityExcelRowResultDto;
 import com.vegayan.airtelmanagement.activity.dto.PlanActivityExcelUploadSummaryDto;
@@ -18,28 +19,15 @@ import com.vegayan.airtelmanagement.user.dto.SubDomainDto;
 import com.vegayan.airtelmanagement.user.dto.TeamFunctionDto;
 import com.vegayan.airtelmanagement.user.dto.VerticalDto;
 import com.vegayan.airtelmanagement.user.service.UserService;
-import org.springframework.data.domain.PageRequest;
-import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
-import org.apache.poi.ss.usermodel.DataValidation;
-import org.apache.poi.ss.usermodel.DataValidationConstraint;
-import org.apache.poi.ss.usermodel.DataValidationHelper;
-import org.apache.poi.ss.usermodel.FillPatternType;
-import org.apache.poi.ss.usermodel.Font;
-import org.apache.poi.ss.usermodel.IndexedColors;
-import org.apache.poi.ss.usermodel.Name;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.ss.util.CellRangeAddress;
-import org.apache.poi.ss.util.CellRangeAddressList;
-import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
@@ -52,6 +40,12 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+/**
+ * Bulk upload for the static template at public/templates/Plan_Activity_Upload_Template.xlsx
+ * (React). Sheet "Upload": row 1 banner, row 2 header, data from row 3. One Activity = a block
+ * of 6 rows sharing an Activity Ref (col A), one row per phase. Plan / Activity columns B-K
+ * are read from the block's CRQ Review row only. Each phase row is one sp_insert_plan_activity call.
+ */
 @Service
 public class PlanActivityExcelService extends BaseService {
 
@@ -66,422 +60,29 @@ public class PlanActivityExcelService extends BaseService {
         this.planSetupService = planSetupService;
     }
 
-    private static final String UPLOAD_SHEET_NAME = "Plan_Activity_Upload";
-    private static final String MASTER_SHEET_NAME = "MASTER_DATA";
-    private static final String INSTRUCTIONS_SHEET_NAME = "Instructions";
-    private static final int DATA_ROW_START = 1; // 0-based row index (Excel row 2)
-    private static final int DATA_ROW_END = 50;
+    private static final String UPLOAD_SHEET_NAME = "Upload";
+    private static final int DATA_ROW_START = 2; // 0-based row index (Excel row 3)
 
-    private static final List<String> LAYER_OPTIONS = List.of(
-            "Access", "Aggregation", "Core", "Backhaul", "Transmission", "IP/MPLS");
-    private static final List<String> PLAN_TYPE_OPTIONS = List.of(
-            "IMPLEMENTATION", "Upgrade", "Greenfield", "Rollout", "Migration", "Decommission", "Maintenance");
-    private static final List<String> CHANGE_IMPACT_OPTIONS = List.of("SA", "NSA");
-    private static final List<String> SHIFT_OPTIONS = List.of("A", "B", "G", "LG", "N");
-    private static final List<String> LEVEL_OPTIONS = List.of("L1", "L2", "L3", "L4");
+    // Upload sheet columns (0-based)
+    private static final int COL_REF = 0, COL_VERTICAL = 1, COL_FUNCTION = 2, COL_DOMAIN = 3, COL_SUB_DOMAIN = 4,
+            COL_NETWORK_DOMAIN = 5, COL_LAYER = 6, COL_PLAN_TYPE = 7, COL_VENDOR = 8, COL_IMPACT = 9,
+            COL_ACTIVITY_NAME = 10, COL_PHASE = 11, COL_SHIFT = 12, COL_LEVEL = 13, COL_TIME = 14,
+            COL_TEAM = 15, COL_DAYS_MARGIN = 16, COL_RESERVATION_MARGIN = 17, COL_ROLLBACK_TIME = 18;
 
-    private static final String[] HEADERS = {
-            "Vertical*", "Team Function*", "CHM Domain*", "CHM Sub Domain*",
-            "Layer*", "Plan Type*", "Vendor / OEM*", "Change Impact*",
-            "Activity Name*",
-            "CRQ Review Shift*", "CRQ Review Min Level*", "CRQ Review Time (Min)*", "CRQ Review Team*",
-            "Impact Analysis Shift*", "Impact Analysis Min Level*", "Impact Analysis Time (Min)*", "Impact Analysis Team*",
-            "Scheduling Shift*", "Scheduling Min Level*", "Scheduling Time (Min)*", "Scheduling Team*",
-            "MOP Create Shift*", "MOP Create Min Level*", "MOP Create Time (Min)*", "MOP Create Team*",
-            "MOP Validate Shift*", "MOP Validate Min Level*", "MOP Validate Time (Min)*", "MOP Validate Team*",
-            "CRQ Execution Shift*", "CRQ Execution Min Level*", "CRQ Execution Time (Min)*",
-            "CRQ Execution Days Margin*", "CRQ Execution Reservation Margin*", "CRQ Execution Rollback Time*", "CRQ Execution Team*"
-    };
+    private static final String CRQ_REVIEW = "CRQ Review";
+    private static final String EXECUTION = "Execution";
+    // Must match the CASE in sp_insert_plan_activity; also the insert order.
+    private static final List<String> PHASES = List.of(
+            CRQ_REVIEW, "Impact Analysis", "Scheduling", "MOP Creation", "MOP Validation", EXECUTION);
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Template generation
-    // ─────────────────────────────────────────────────────────────────────────
-
-    public Workbook generateTemplate(Long actorUserId) {
-        OrgHierarchyResponse hierarchy = userService.getOrgHierarchyByUserV1(actorUserId);
-        return buildTemplate(hierarchy);
-    }
-
-    private Workbook buildTemplate(OrgHierarchyResponse hierarchy) {
-        Workbook workbook = new XSSFWorkbook();
-        Sheet instructionsSheet = workbook.createSheet(INSTRUCTIONS_SHEET_NAME);
-        Sheet uploadSheet = workbook.createSheet(UPLOAD_SHEET_NAME);
-        Sheet masterSheet = workbook.createSheet(MASTER_SHEET_NAME);
-
-        createInstructionsSheet(workbook, instructionsSheet);
-        createHeader(workbook, uploadSheet);
-        writeSampleRow(uploadSheet, hierarchy);
-        applyAutoFilter(uploadSheet);
-        autoFitColumns(uploadSheet, HEADERS.length);
-        createMasterData(workbook, masterSheet, hierarchy);
-        applyDropdowns(workbook, uploadSheet);
-
-        uploadSheet.createFreezePane(0, 1);
-        workbook.setActiveSheet(workbook.getSheetIndex(UPLOAD_SHEET_NAME));
-        return workbook;
-    }
-
-    private void applyAutoFilter(Sheet sheet) {
-        sheet.setAutoFilter(new CellRangeAddress(0, 0, 0, HEADERS.length - 1));
-    }
-
-    private void autoFitColumns(Sheet sheet, int columnCount) {
-        for (int i = 0; i < columnCount; i++) {
-            sheet.autoSizeColumn(i);
-            int width = Math.max(3000, Math.min(sheet.getColumnWidth(i), 7500));
-            sheet.setColumnWidth(i, width);
-        }
-    }
-
-    private void createInstructionsSheet(Workbook workbook, Sheet sheet) {
-        CellStyle titleStyle = workbook.createCellStyle();
-        Font titleFont = workbook.createFont();
-        titleFont.setBold(true);
-        titleFont.setFontHeightInPoints((short) 14);
-        titleFont.setColor(IndexedColors.DARK_BLUE.getIndex());
-        titleStyle.setFont(titleFont);
-
-        CellStyle sectionStyle = workbook.createCellStyle();
-        Font sectionFont = workbook.createFont();
-        sectionFont.setBold(true);
-        sectionFont.setFontHeightInPoints((short) 11);
-        sectionStyle.setFont(sectionFont);
-
-        CellStyle bodyStyle = workbook.createCellStyle();
-        bodyStyle.setWrapText(true);
-        Font bodyFont = workbook.createFont();
-        bodyFont.setFontHeightInPoints((short) 10);
-        bodyStyle.setFont(bodyFont);
-
-        String[] lines = {
-                "TITLE::Plan & Activity — Bulk Excel Upload — Instructions",
-                "",
-                "SECTION::How this works",
-                "BODY::Fill one row per Activity on the 'Plan_Activity_Upload' sheet. Each row creates (or reuses, if an identical Plan already exists) one Plan and always creates one new Activity with its 6 phases: CRQ Review, Impact Analysis, Scheduling, MOP Create, MOP Validate, CRQ Execution.",
-                "BODY::The uploading user is taken automatically from your logged-in session — there is no 'Actor User Id' column to fill in.",
-                "",
-                "SECTION::Sheet names — do not rename",
-                "BODY::Do not rename or delete the 'Plan_Activity_Upload' or 'MASTER_DATA' sheet tabs. The upload reads the 'Plan_Activity_Upload' sheet by name, and the dropdowns on it reference named ranges defined on 'MASTER_DATA'.",
-                "",
-                "SECTION::Mandatory fields",
-                "BODY::Every column marked with * on the header row is mandatory. Rows with missing mandatory values will be listed in the Validation Errors grid and will not be uploaded.",
-                "",
-                "SECTION::Organization Hierarchy columns",
-                "BODY::Vertical, Team Function, CHM Domain and CHM Sub Domain must be chosen in order, left to right — each dropdown only offers valid children of the value chosen to its left. Type only using the dropdown; free-text values that don't match an existing name will fail validation.",
-                "",
-                "SECTION::Assigned Team columns",
-                "BODY::Each phase's 'Assigned Team' represents your organization's Sub Domain / team unit. Pick a value from the Team dropdown — do not type free text. An unrecognized team name will fail validation and the row will not be uploaded.",
-                "",
-                "SECTION::Allowed values",
-                "BODY::Shift: A, B, G, LG, N.",
-                "BODY::Minimum Level: L1, L2, L3, L4.",
-                "BODY::Layer, Plan Type and Change Impact must match one of the values offered in their dropdown.",
-                "BODY::Time (Min), Days Margin, Reservation Margin and Rollback Time must be whole, non-negative numbers.",
-                "",
-                "SECTION::Duplicates",
-                "BODY::Rows that share the same Plan combination (Domain / Sub Domain / Layer / Plan Type / Vendor / Change Impact) and the same Activity Name — either within this file or against an Activity that already exists for that Plan — are flagged as duplicates and will not be uploaded.",
-                "",
-                "SECTION::Before you upload",
-                "BODY::1. Fill in the 'Plan_Activity_Upload' sheet using the dropdowns.",
-                "BODY::2. Upload the file — invalid rows are shown in a Validation Errors grid before anything is saved.",
-                "BODY::3. Fix and re-upload, or continue — only valid rows are sent to the system.",
-                "BODY::4. Review the Upload Summary once the valid rows have been processed.",
-                "",
-                "BODY::Need help? Contact your CHM administrator.",
-        };
-
-        sheet.setColumnWidth(0, 22000);
-        int rowIdx = 0;
-        for (String line : lines) {
-            Row row = sheet.createRow(rowIdx);
-            Cell cell = row.createCell(0);
-            if (line.startsWith("TITLE::")) {
-                cell.setCellValue(line.substring("TITLE::".length()));
-                cell.setCellStyle(titleStyle);
-                row.setHeightInPoints(24);
-            } else if (line.startsWith("SECTION::")) {
-                cell.setCellValue(line.substring("SECTION::".length()));
-                cell.setCellStyle(sectionStyle);
-            } else if (line.startsWith("BODY::")) {
-                cell.setCellValue(line.substring("BODY::".length()));
-                cell.setCellStyle(bodyStyle);
-                row.setHeightInPoints(30);
-            }
-            rowIdx++;
-        }
-    }
-
-    private void createHeader(Workbook workbook, Sheet sheet) {
-        CellStyle planHeaderStyle = workbook.createCellStyle();
-        Font planFont = workbook.createFont();
-        planFont.setBold(true);
-        planFont.setColor(IndexedColors.WHITE.getIndex());
-        planHeaderStyle.setFont(planFont);
-        planHeaderStyle.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
-        planHeaderStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        planHeaderStyle.setBorderBottom(BorderStyle.THIN);
-        planHeaderStyle.setWrapText(true);
-
-        CellStyle activityHeaderStyle = workbook.createCellStyle();
-        activityHeaderStyle.cloneStyleFrom(planHeaderStyle);
-        activityHeaderStyle.setFillForegroundColor(IndexedColors.TEAL.getIndex());
-
-        Row header = sheet.createRow(0);
-        header.setHeightInPoints(32);
-        for (int i = 0; i < HEADERS.length; i++) {
-            Cell cell = header.createCell(i);
-            cell.setCellValue(HEADERS[i]);
-            cell.setCellStyle(i < 8 ? planHeaderStyle : activityHeaderStyle);
-        }
-    }
-
-    private void writeSampleRow(Sheet sheet, OrgHierarchyResponse hierarchy) {
-        String sampleVertical = "Sample Vertical";
-        String sampleFunction = "Sample Function";
-        String sampleDomain = "Sample Domain";
-        String sampleSubDomain = "Sample Sub Domain";
-
-        if (!hierarchy.getSubDomains().isEmpty()) {
-            SubDomainDto sd = hierarchy.getSubDomains().get(0);
-            sampleSubDomain = sd.getName();
-
-            DomainDto matchedDomain = null;
-            for (DomainDto d : hierarchy.getDomains()) {
-                if (d.getId().equals(sd.getDomainId())) {
-                    matchedDomain = d;
-                    break;
-                }
-            }
-            if (matchedDomain != null) {
-                sampleDomain = matchedDomain.getName();
-
-                TeamFunctionDto matchedFunction = null;
-                for (TeamFunctionDto f : hierarchy.getTeamFunction()) {
-                    if (f.getId().equals(matchedDomain.getFunctionId())) {
-                        matchedFunction = f;
-                        break;
-                    }
-                }
-                if (matchedFunction != null) {
-                    sampleFunction = matchedFunction.getName();
-
-                    for (VerticalDto v : hierarchy.getVerticals()) {
-                        if (v.getId().equals(matchedFunction.getVerticalId())) {
-                            sampleVertical = v.getName();
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        String[] sample = {
-                sampleVertical, sampleFunction, sampleDomain, sampleSubDomain,
-                "Access", "Upgrade", "Cisco", "NSA",
-                "Sample Router Upgrade",
-                "G", "L2", "60", sampleSubDomain,
-                "G", "L2", "45", sampleSubDomain,
-                "LG", "L3", "30", sampleSubDomain,
-                "A", "L2", "90", sampleSubDomain,
-                "A", "L2", "45", sampleSubDomain,
-                "N", "L3", "120", "5", "2", "60", sampleSubDomain
-        };
-        Row row = sheet.createRow(1);
-        for (int i = 0; i < sample.length; i++) {
-            row.createCell(i).setCellValue(sample[i]);
-        }
-    }
-
-    private void createMasterData(Workbook workbook, Sheet master, OrgHierarchyResponse hierarchy) {
-        CellStyle listHeaderStyle = buildListHeaderStyle(workbook);
-        CellStyle hintStyle = buildHintStyle(workbook);
-
-        record ListDef(String rangeName, List<String> values) {
-        }
-
-        List<ListDef> flatLists = List.of(
-                new ListDef("VERTICAL_LIST", verticalNames(hierarchy)),
-                new ListDef("LAYER_OPTIONS", LAYER_OPTIONS),
-                new ListDef("PLAN_TYPE_OPTIONS", PLAN_TYPE_OPTIONS),
-                new ListDef("CHANGE_IMPACT_OPTIONS", CHANGE_IMPACT_OPTIONS),
-                new ListDef("SHIFT_OPTIONS", SHIFT_OPTIONS),
-                new ListDef("LEVEL_OPTIONS", LEVEL_OPTIONS),
-                new ListDef("TEAM_OPTIONS", subDomainNames(hierarchy))
-        );
-
-        int col = 0;
-        for (ListDef def : flatLists) {
-            writeFlatListColumn(workbook, master, def.rangeName(), def.values(), col++, listHeaderStyle, hintStyle);
-        }
-
-        // Vertical -> Team Function cascade (range names prefixed FN_ to avoid
-        // colliding with the Domain/Sub Domain cascades below, in case a name
-        // is reused across hierarchy levels).
-        Map<Long, String> verticalNameById = new HashMap<>();
-        for (VerticalDto v : hierarchy.getVerticals()) verticalNameById.put(v.getId(), v.getName());
-
-        Map<String, Set<String>> verticalFunctionMap = new TreeMap<>();
-        for (TeamFunctionDto f : hierarchy.getTeamFunction()) {
-            String verticalName = verticalNameById.get(f.getVerticalId());
-            if (verticalName == null) continue;
-            verticalFunctionMap.computeIfAbsent(verticalName, k -> new TreeSet<>()).add(f.getName());
-        }
-        for (Map.Entry<String, Set<String>> entry : verticalFunctionMap.entrySet()) {
-            writeFlatListColumn(workbook, master, "FN_" + sanitize(entry.getKey()),
-                    new ArrayList<>(entry.getValue()), col++, listHeaderStyle, hintStyle);
-        }
-
-        // Team Function -> CHM Domain cascade
-        Map<Long, String> functionNameById = new HashMap<>();
-        for (TeamFunctionDto f : hierarchy.getTeamFunction()) functionNameById.put(f.getId(), f.getName());
-
-        Map<String, Set<String>> functionDomainMap = new TreeMap<>();
-        for (DomainDto d : hierarchy.getDomains()) {
-            String functionName = functionNameById.get(d.getFunctionId());
-            if (functionName == null) continue;
-            functionDomainMap.computeIfAbsent(functionName, k -> new TreeSet<>()).add(d.getName());
-        }
-        for (Map.Entry<String, Set<String>> entry : functionDomainMap.entrySet()) {
-            writeFlatListColumn(workbook, master, "DM_" + sanitize(entry.getKey()),
-                    new ArrayList<>(entry.getValue()), col++, listHeaderStyle, hintStyle);
-        }
-
-        // CHM Domain -> CHM Sub Domain cascade
-        Map<Long, String> domainNameById = new HashMap<>();
-        for (DomainDto d : hierarchy.getDomains()) domainNameById.put(d.getId(), d.getName());
-
-        Map<String, Set<String>> domainSubDomainMap = new TreeMap<>();
-        for (SubDomainDto sd : hierarchy.getSubDomains()) {
-            String domainName = domainNameById.get(sd.getDomainId());
-            if (domainName == null) continue;
-            domainSubDomainMap.computeIfAbsent(domainName, k -> new TreeSet<>()).add(sd.getName());
-        }
-        for (Map.Entry<String, Set<String>> entry : domainSubDomainMap.entrySet()) {
-            writeFlatListColumn(workbook, master, "SD_" + sanitize(entry.getKey()),
-                    new ArrayList<>(entry.getValue()), col++, listHeaderStyle, hintStyle);
-        }
-    }
-
-    private List<String> verticalNames(OrgHierarchyResponse hierarchy) {
-        return hierarchy.getVerticals().stream().map(VerticalDto::getName).distinct().sorted().toList();
-    }
-
-    private List<String> subDomainNames(OrgHierarchyResponse hierarchy) {
-        return hierarchy.getSubDomains().stream().map(SubDomainDto::getName).distinct().sorted().toList();
-    }
-
-    private void writeFlatListColumn(Workbook workbook, Sheet master, String rangeName, List<String> values,
-                                      int col, CellStyle headerStyle, CellStyle hintStyle) {
-        if (values == null || values.isEmpty()) return;
-        if (workbook.getName(rangeName) != null) return;
-
-        Row headerRow = getOrCreateRow(master, 0);
-        Cell headerCell = headerRow.createCell(col);
-        headerCell.setCellValue(rangeName.replace("_", " "));
-        headerCell.setCellStyle(headerStyle);
-
-        int row = 1;
-        for (String value : values) {
-            getOrCreateRow(master, row++).createCell(col).setCellValue(value);
-        }
-
-        // Named range spans exactly the real values — no padding. The sheet is
-        // rebuilt from the live DB on every download, so there's nothing to
-        // "grow into" later, and padding it with blank rows previously buried
-        // the real options under dozens of blank entries, making Excel's
-        // dropdown open scrolled past everything real.
-        String colLetter = CellReference.convertNumToColString(col);
-        String formula = MASTER_SHEET_NAME + "!$" + colLetter + "$2" + ":$" + colLetter + "$" + row;
-
-        Name namedRange = workbook.createName();
-        namedRange.setNameName(rangeName);
-        namedRange.setRefersToFormula(formula);
-
-        Cell hint = getOrCreateRow(master, row).createCell(col);
-        hint.setCellValue("(reference list — do not edit)");
-        hint.setCellStyle(hintStyle);
-
-        master.autoSizeColumn(col);
-    }
-
-    private void applyDropdowns(Workbook workbook, Sheet sheet) {
-        DataValidationHelper helper = sheet.getDataValidationHelper();
-
-        addDropdown(helper, sheet, "VERTICAL_LIST", 0);
-        addFormulaDropdown(helper, sheet, "INDIRECT(\"FN_\"&SUBSTITUTE($A2,\" \",\"_\"))", 1);
-        addFormulaDropdown(helper, sheet, "INDIRECT(\"DM_\"&SUBSTITUTE($B2,\" \",\"_\"))", 2);
-        addFormulaDropdown(helper, sheet, "INDIRECT(\"SD_\"&SUBSTITUTE($C2,\" \",\"_\"))", 3);
-        addDropdown(helper, sheet, "LAYER_OPTIONS", 4);
-        addDropdown(helper, sheet, "PLAN_TYPE_OPTIONS", 5);
-        addDropdown(helper, sheet, "CHANGE_IMPACT_OPTIONS", 7);
-
-        int[] shiftCols = {9, 13, 17, 21, 25, 29};
-        int[] levelCols = {10, 14, 18, 22, 26, 30};
-        int[] teamCols = {12, 16, 20, 24, 28, 35};
-        for (int c : shiftCols) addDropdown(helper, sheet, "SHIFT_OPTIONS", c);
-        for (int c : levelCols) addDropdown(helper, sheet, "LEVEL_OPTIONS", c);
-        for (int c : teamCols) addDropdown(helper, sheet, "TEAM_OPTIONS", c);
-    }
-
-    private void addDropdown(DataValidationHelper helper, Sheet sheet, String rangeName, int column) {
-        DataValidationConstraint constraint = helper.createFormulaListConstraint(rangeName);
-        DataValidation validation = helper.createValidation(
-                constraint, new CellRangeAddressList(DATA_ROW_START, DATA_ROW_END, column, column));
-        validation.setShowErrorBox(true);
-        validation.setErrorStyle(DataValidation.ErrorStyle.WARNING);
-        validation.createErrorBox("Value Not In List",
-                "This value is not in the predefined list. You may still proceed, but double check spelling.");
-        validation.setShowPromptBox(true);
-        validation.createPromptBox("Tip", "Select a value from the dropdown list.");
-        sheet.addValidationData(validation);
-    }
-
-    private void addFormulaDropdown(DataValidationHelper helper, Sheet sheet, String formula, int column) {
-        DataValidationConstraint constraint = helper.createFormulaListConstraint(formula);
-        DataValidation validation = helper.createValidation(
-                constraint, new CellRangeAddressList(DATA_ROW_START, DATA_ROW_END, column, column));
-        validation.setShowErrorBox(false);
-        sheet.addValidationData(validation);
-    }
-
-    private CellStyle buildListHeaderStyle(Workbook wb) {
-        CellStyle s = wb.createCellStyle();
-        Font f = wb.createFont();
-        f.setBold(true);
-        s.setFont(f);
-        s.setFillForegroundColor(IndexedColors.LIGHT_BLUE.getIndex());
-        s.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        s.setBorderBottom(BorderStyle.THIN);
-        return s;
-    }
-
-    private CellStyle buildHintStyle(Workbook wb) {
-        CellStyle s = wb.createCellStyle();
-        Font f = wb.createFont();
-        f.setItalic(true);
-        f.setColor(IndexedColors.GREY_50_PERCENT.getIndex());
-        s.setFont(f);
-        return s;
-    }
-
-    private Row getOrCreateRow(Sheet sheet, int rowIndex) {
-        Row row = sheet.getRow(rowIndex);
-        return row != null ? row : sheet.createRow(rowIndex);
-    }
-
-    private String sanitize(String name) {
-        String cleaned = name.replaceAll("[^A-Za-z0-9_]", "_");
-        if (cleaned.isBlank()) cleaned = "DEFAULT";
-        if (Character.isDigit(cleaned.charAt(0))) cleaned = "_" + cleaned;
-        return cleaned;
-    }
+    private static final String TEAM_PATH_SEPARATOR = ">";
 
     // ─────────────────────────────────────────────────────────────────────────
     // Parsing
     // ─────────────────────────────────────────────────────────────────────────
 
     public List<PlanActivityExcelRowDto> parseExcel(MultipartFile file) throws Exception {
-        List<PlanActivityExcelRowDto> list = new ArrayList<>();
+        Map<String, PlanActivityExcelRowDto> byRef = new LinkedHashMap<>();
         DataFormatter fmt = new DataFormatter();
 
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
@@ -493,58 +94,69 @@ public class PlanActivityExcelService extends BaseService {
 
             for (int i = DATA_ROW_START; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
-                if (row == null || isRowEmpty(row)) continue;
+                if (row == null || isRowEmpty(fmt, row)) continue;
 
-                PlanActivityExcelRowDto dto = new PlanActivityExcelRowDto();
-                dto.setRowNumber(i + 1);
+                int rowNumber = i + 1;
+                String ref = text(fmt, row, COL_REF);
+                // A filled row without a ref still becomes its own block so it is reported, not dropped.
+                String key = ref != null ? ref : "(row " + rowNumber + ")";
 
-                dto.setVerticalName(text(fmt, row, 0));
-                dto.setFunctionName(text(fmt, row, 1));
-                dto.setChmDomainName(text(fmt, row, 2));
-                dto.setChmSubDomainName(text(fmt, row, 3));
-                dto.setLayer(text(fmt, row, 4));
-                dto.setPlanType(text(fmt, row, 5));
-                dto.setVendorOem(text(fmt, row, 6));
-                dto.setChangeImpact(text(fmt, row, 7));
-                dto.setActivityName(text(fmt, row, 8));
+                PlanActivityExcelRowDto activity = byRef.computeIfAbsent(key, k -> {
+                    PlanActivityExcelRowDto a = new PlanActivityExcelRowDto();
+                    a.setRowNumber(rowNumber);
+                    a.setActivityRef(k);
+                    return a;
+                });
 
-                dto.setCrqReviewShift(text(fmt, row, 9));
-                dto.setCrqReviewMinimumLevelRequirement(text(fmt, row, 10));
-                dto.setCrqReviewRequiredTimeMinutes(intVal(fmt, row, 11));
-                dto.setCrqReviewTeamName(text(fmt, row, 12));
+                PlanActivityExcelPhaseDto phase = new PlanActivityExcelPhaseDto();
+                phase.setRowNumber(rowNumber);
+                phase.setPhase(text(fmt, row, COL_PHASE));
+                phase.setShift(text(fmt, row, COL_SHIFT));
+                phase.setMinimumLevelRequirement(text(fmt, row, COL_LEVEL));
+                phase.setRequiredTimeMinutes(intVal(fmt, row, COL_TIME));
+                phase.setTeamPath(text(fmt, row, COL_TEAM));
+                phase.setDaysMargin(intVal(fmt, row, COL_DAYS_MARGIN));
+                phase.setReservationMargin(intVal(fmt, row, COL_RESERVATION_MARGIN));
+                phase.setRollbackTime(intVal(fmt, row, COL_ROLLBACK_TIME));
+                activity.getPhases().add(phase);
 
-                dto.setImpactAnalysisShift(text(fmt, row, 13));
-                dto.setImpactAnalysisMinimumLevelRequirement(text(fmt, row, 14));
-                dto.setImpactAnalysisRequiredTimeMinutes(intVal(fmt, row, 15));
-                dto.setImpactAnalysisTeamName(text(fmt, row, 16));
-
-                dto.setSchedulingShift(text(fmt, row, 17));
-                dto.setSchedulingMinimumLevelRequirement(text(fmt, row, 18));
-                dto.setSchedulingRequiredTimeMinutes(intVal(fmt, row, 19));
-                dto.setSchedulingTeamName(text(fmt, row, 20));
-
-                dto.setMopCreateShift(text(fmt, row, 21));
-                dto.setMopCreateMinimumLevelRequirement(text(fmt, row, 22));
-                dto.setMopCreateRequiredTimeMinutes(intVal(fmt, row, 23));
-                dto.setMopCreateTeamName(text(fmt, row, 24));
-
-                dto.setMopValidateShift(text(fmt, row, 25));
-                dto.setMopValidateMinimumLevelRequirement(text(fmt, row, 26));
-                dto.setMopValidateRequiredTimeMinutes(intVal(fmt, row, 27));
-                dto.setMopValidateTeamName(text(fmt, row, 28));
-
-                dto.setCrqExecutionShift(text(fmt, row, 29));
-                dto.setCrqExecutionMinimumLevelRequirement(text(fmt, row, 30));
-                dto.setCrqExecutionRequiredTimeMinutes(intVal(fmt, row, 31));
-                dto.setCrqExecutionDaysMargin(intVal(fmt, row, 32));
-                dto.setCrqExecutionReservationMargin(intVal(fmt, row, 33));
-                dto.setCrqExecutionRollbackTime(intVal(fmt, row, 34));
-                dto.setCrqExecutionTeamName(text(fmt, row, 35));
-
-                list.add(dto);
+                if (CRQ_REVIEW.equalsIgnoreCase(safe(phase.getPhase()))) {
+                    activity.setVerticalName(text(fmt, row, COL_VERTICAL));
+                    activity.setFunctionName(text(fmt, row, COL_FUNCTION));
+                    activity.setChmDomainName(text(fmt, row, COL_DOMAIN));
+                    activity.setChmSubDomainName(text(fmt, row, COL_SUB_DOMAIN));
+                    activity.setNetworkDomain(text(fmt, row, COL_NETWORK_DOMAIN));
+                    activity.setLayer(text(fmt, row, COL_LAYER));
+                    activity.setPlanType(text(fmt, row, COL_PLAN_TYPE));
+                    activity.setVendorOem(text(fmt, row, COL_VENDOR));
+                    activity.setChangeImpact(text(fmt, row, COL_IMPACT));
+                    activity.setActivityName(text(fmt, row, COL_ACTIVITY_NAME));
+                }
             }
         }
+
+        // Unused template blocks only carry the pre-filled Activity Ref + Phase — skip them.
+        List<PlanActivityExcelRowDto> list = new ArrayList<>();
+        for (PlanActivityExcelRowDto a : byRef.values()) {
+            if (!isBlockEmpty(a)) list.add(a);
+        }
         return list;
+    }
+
+    private boolean isBlockEmpty(PlanActivityExcelRowDto a) {
+        boolean planEmpty = isBlank(a.getVerticalName()) && isBlank(a.getFunctionName())
+                && isBlank(a.getChmDomainName()) && isBlank(a.getChmSubDomainName())
+                && isBlank(a.getNetworkDomain()) && isBlank(a.getLayer()) && isBlank(a.getPlanType())
+                && isBlank(a.getVendorOem()) && isBlank(a.getChangeImpact()) && isBlank(a.getActivityName());
+        if (!planEmpty) return false;
+        for (PlanActivityExcelPhaseDto p : a.getPhases()) {
+            if (!isBlank(p.getShift()) || !isBlank(p.getMinimumLevelRequirement())
+                    || p.getRequiredTimeMinutes() != null || !isBlank(p.getTeamPath())
+                    || p.getDaysMargin() != null || p.getReservationMargin() != null || p.getRollbackTime() != null) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private String text(DataFormatter fmt, Row row, int col) {
@@ -569,10 +181,10 @@ public class PlanActivityExcelService extends BaseService {
         }
     }
 
-    private boolean isRowEmpty(Row row) {
-        for (int c = 0; c < row.getLastCellNum(); c++) {
-            Cell cell = row.getCell(c);
-            if (cell != null && cell.getCellType() != CellType.BLANK) return false;
+    /** Only data columns A-S count — column T is a helper formula. */
+    private boolean isRowEmpty(DataFormatter fmt, Row row) {
+        for (int c = COL_REF; c <= COL_ROLLBACK_TIME; c++) {
+            if (text(fmt, row, c) != null) return false;
         }
         return true;
     }
@@ -585,11 +197,11 @@ public class PlanActivityExcelService extends BaseService {
         List<PlanActivityExcelRowDto> rows = parseExcel(file);
         List<PlanActivityValidationErrorDto> errors = validateRows(actorUserId, rows);
 
-        Set<Integer> invalidRows = new HashSet<>();
-        for (PlanActivityValidationErrorDto e : errors) invalidRows.add(e.getRowNumber());
+        Set<String> invalidRefs = new HashSet<>();
+        for (PlanActivityValidationErrorDto e : errors) invalidRefs.add(e.getActivityRef());
 
         return new PlanActivityExcelParseResponseDto(
-                rows.size(), rows.size() - invalidRows.size(), invalidRows.size(), rows, errors);
+                rows.size(), rows.size() - invalidRefs.size(), invalidRefs.size(), rows, errors);
     }
 
     public List<PlanActivityValidationErrorDto> validateRows(Long actorUserId, List<PlanActivityExcelRowDto> rows) {
@@ -622,100 +234,83 @@ public class PlanActivityExcelService extends BaseService {
                     .put(sd.getName(), sd);
         }
 
-        // Teams are resolved by sp_insert_plan_activity as a flat, org-wide
-        // lookup against ORG_SUB_DOMAIN (not scoped to the row's own Domain),
-        // so team-name existence is validated the same way here.
-        Map<String, SubDomainDto> subDomainByNameFlat = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-        for (SubDomainDto sd : hierarchy.getSubDomains()) subDomainByNameFlat.put(sd.getName(), sd);
+        // sp_insert_plan_activity resolves the Assigned Team by Sub Domain NAME only
+        // (org-wide, LIMIT 1), so a name that appears under more than one Domain can't
+        // be mapped safely — count occurrences to reject those instead of guessing.
+        Map<String, Integer> subDomainNameCount = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        for (SubDomainDto sd : hierarchy.getSubDomains()) subDomainNameCount.merge(sd.getName(), 1, Integer::sum);
+
+        Set<String> teamPaths = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        teamPaths.addAll(buildTeamPaths(hierarchy));
 
         Map<String, Integer> comboActivityFirstRow = new HashMap<>();
         Map<String, Integer> comboPlanIdCache = new HashMap<>();
         Map<Integer, List<ActivityPhaseViewDTO.ActivityEntry>> planActivitiesCache = new HashMap<>();
 
         for (PlanActivityExcelRowDto row : rows) {
-            int rn = row.getRowNumber();
+            String ref = row.getActivityRef();
+            PlanActivityExcelPhaseDto crqRow = findPhase(row, CRQ_REVIEW);
+            int rn = crqRow != null ? crqRow.getRowNumber() : row.getRowNumber();
 
             VerticalDto vertical = null;
             if (isBlank(row.getVerticalName())) {
-                errors.add(err(rn, "Vertical", row.getVerticalName(), "Required"));
+                errors.add(err(rn, ref, "Vertical", row.getVerticalName(), "Required (on the CRQ Review row)"));
             } else {
                 vertical = verticalByName.get(row.getVerticalName().trim());
                 if (vertical == null) {
-                    errors.add(err(rn, "Vertical", row.getVerticalName(), "Invalid Vertical — not found"));
+                    errors.add(err(rn, ref, "Vertical", row.getVerticalName(), "Invalid Vertical — not found"));
                 }
             }
 
             TeamFunctionDto function = null;
             if (isBlank(row.getFunctionName())) {
-                errors.add(err(rn, "Team Function", row.getFunctionName(), "Required"));
+                errors.add(err(rn, ref, "Team Function", row.getFunctionName(), "Required (on the CRQ Review row)"));
             } else if (vertical != null) {
                 function = functionsByVertical.getOrDefault(vertical.getId(), Map.of())
                         .get(row.getFunctionName().trim());
                 if (function == null) {
-                    errors.add(err(rn, "Team Function", row.getFunctionName(),
+                    errors.add(err(rn, ref, "Team Function", row.getFunctionName(),
                             "Invalid Hierarchy Mapping — not found under Vertical '" + row.getVerticalName().trim() + "'"));
                 }
             }
 
             DomainDto domain = null;
             if (isBlank(row.getChmDomainName())) {
-                errors.add(err(rn, "CHM Domain", row.getChmDomainName(), "Required"));
+                errors.add(err(rn, ref, "CHM Domain", row.getChmDomainName(), "Required (on the CRQ Review row)"));
             } else if (function != null) {
                 domain = domainsByFunction.getOrDefault(function.getId(), Map.of())
                         .get(row.getChmDomainName().trim());
                 if (domain == null) {
-                    errors.add(err(rn, "CHM Domain", row.getChmDomainName(),
+                    errors.add(err(rn, ref, "CHM Domain", row.getChmDomainName(),
                             "Invalid Hierarchy Mapping — not found under Team Function '" + row.getFunctionName().trim() + "'"));
                 }
             }
 
             SubDomainDto subDomain = null;
             if (isBlank(row.getChmSubDomainName())) {
-                errors.add(err(rn, "CHM Sub Domain", row.getChmSubDomainName(), "Required"));
+                errors.add(err(rn, ref, "CHM Sub Domain", row.getChmSubDomainName(), "Required (on the CRQ Review row)"));
             } else if (domain != null) {
                 subDomain = subDomainsByDomain.getOrDefault(domain.getId(), Map.of())
                         .get(row.getChmSubDomainName().trim());
                 if (subDomain == null) {
-                    errors.add(err(rn, "CHM Sub Domain", row.getChmSubDomainName(),
+                    errors.add(err(rn, ref, "CHM Sub Domain", row.getChmSubDomainName(),
                             "Invalid Hierarchy Mapping — not found under CHM Domain '" + row.getChmDomainName().trim() + "'"));
                 }
             }
 
-            requireText(errors, rn, "Vendor / OEM", row.getVendorOem());
-            requireOneOf(errors, rn, "Layer", row.getLayer(), LAYER_OPTIONS);
-            requireOneOf(errors, rn, "Plan Type", row.getPlanType(), PLAN_TYPE_OPTIONS);
-            requireOneOf(errors, rn, "Change Impact", row.getChangeImpact(), CHANGE_IMPACT_OPTIONS);
+            requireText(errors, rn, ref, "Network Domain", row.getNetworkDomain());
+            requireText(errors, rn, ref, "Layer", row.getLayer());
+            requireText(errors, rn, ref, "Plan Type", row.getPlanType());
+            requireText(errors, rn, ref, "Vendor / OEM", row.getVendorOem());
+            requireText(errors, rn, ref, "Impact", row.getChangeImpact());
 
             if (isBlank(row.getActivityName())) {
-                errors.add(err(rn, "Activity Name", row.getActivityName(), "Required"));
+                errors.add(err(rn, ref, "Activity Name", row.getActivityName(), "Required (on the CRQ Review row)"));
             } else if (row.getActivityName().trim().length() > 30) {
-                errors.add(err(rn, "Activity Name", row.getActivityName(), "Must be 30 characters or fewer"));
+                errors.add(err(rn, ref, "Activity Name", row.getActivityName(), "Must be 30 characters or fewer"));
             }
 
-            validatePhase(errors, rn, "CRQ Review",
-                    row.getCrqReviewShift(), row.getCrqReviewMinimumLevelRequirement(), row.getCrqReviewRequiredTimeMinutes(),
-                    null, null, null, false, row.getCrqReviewTeamName(), subDomainByNameFlat);
-
-            validatePhase(errors, rn, "Impact Analysis",
-                    row.getImpactAnalysisShift(), row.getImpactAnalysisMinimumLevelRequirement(), row.getImpactAnalysisRequiredTimeMinutes(),
-                    null, null, null, false, row.getImpactAnalysisTeamName(), subDomainByNameFlat);
-
-            validatePhase(errors, rn, "Scheduling",
-                    row.getSchedulingShift(), row.getSchedulingMinimumLevelRequirement(), row.getSchedulingRequiredTimeMinutes(),
-                    null, null, null, false, row.getSchedulingTeamName(), subDomainByNameFlat);
-
-            validatePhase(errors, rn, "MOP Create",
-                    row.getMopCreateShift(), row.getMopCreateMinimumLevelRequirement(), row.getMopCreateRequiredTimeMinutes(),
-                    null, null, null, false, row.getMopCreateTeamName(), subDomainByNameFlat);
-
-            validatePhase(errors, rn, "MOP Validate",
-                    row.getMopValidateShift(), row.getMopValidateMinimumLevelRequirement(), row.getMopValidateRequiredTimeMinutes(),
-                    null, null, null, false, row.getMopValidateTeamName(), subDomainByNameFlat);
-
-            validatePhase(errors, rn, "CRQ Execution",
-                    row.getCrqExecutionShift(), row.getCrqExecutionMinimumLevelRequirement(), row.getCrqExecutionRequiredTimeMinutes(),
-                    row.getCrqExecutionDaysMargin(), row.getCrqExecutionReservationMargin(), row.getCrqExecutionRollbackTime(),
-                    true, row.getCrqExecutionTeamName(), subDomainByNameFlat);
+            validatePhases(errors, row, subDomainNameCount, teamPaths);
 
             if (domain != null && subDomain != null && !isBlank(row.getActivityName())) {
                 checkDuplicateActivity(errors, actorUserId, rn, row, domain, subDomain,
@@ -726,12 +321,115 @@ public class PlanActivityExcelService extends BaseService {
         return errors;
     }
 
+    private void validatePhases(List<PlanActivityValidationErrorDto> errors, PlanActivityExcelRowDto row,
+                                Map<String, Integer> subDomainNameCount, Set<String> teamPaths) {
+        String ref = row.getActivityRef();
+        Set<String> seen = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+
+        for (PlanActivityExcelPhaseDto p : row.getPhases()) {
+            int rn = p.getRowNumber();
+            String phase = safe(p.getPhase());
+
+            if (phase.isEmpty()) {
+                errors.add(err(rn, ref, "Phase", p.getPhase(), "Required"));
+                continue;
+            }
+            if (PHASES.stream().noneMatch(phase::equalsIgnoreCase)) {
+                errors.add(err(rn, ref, "Phase", p.getPhase(), "Invalid Phase — must be one of " + PHASES));
+                continue;
+            }
+            if (!seen.add(phase)) {
+                errors.add(err(rn, ref, "Phase", p.getPhase(), "Duplicate Phase within Activity Ref " + ref));
+            }
+
+            if (p.getRequiredTimeMinutes() == null) {
+                errors.add(err(rn, ref, phase + " Time (Min)", "", "Required or must be a valid non-negative number"));
+            } else if (p.getRequiredTimeMinutes() < 0) {
+                errors.add(err(rn, ref, phase + " Time (Min)", str(p.getRequiredTimeMinutes()), "Must be a non-negative number"));
+            }
+
+            if (EXECUTION.equalsIgnoreCase(phase)) {
+                nonNegative(errors, rn, ref, phase + " Days Margin", p.getDaysMargin());
+                nonNegative(errors, rn, ref, phase + " Reservation Margin", p.getReservationMargin());
+                nonNegative(errors, rn, ref, phase + " Rollback Time", p.getRollbackTime());
+            }
+
+            String teamName = resolveTeamName(row, p);
+            String teamValue = isBlank(p.getTeamPath()) ? row.getChmSubDomainName() : p.getTeamPath();
+            if (isBlank(teamName)) {
+                errors.add(err(rn, ref, phase + " Assigned Team", teamValue, "Required"));
+            } else if (p.getTeamPath() != null && p.getTeamPath().contains(TEAM_PATH_SEPARATOR)
+                    && !teamPaths.contains(normalizePath(p.getTeamPath()))) {
+                errors.add(err(rn, ref, phase + " Assigned Team", teamValue, "Invalid Team — path not found"));
+            } else {
+                int count = subDomainNameCount.getOrDefault(teamName, 0);
+                if (count == 0) {
+                    errors.add(err(rn, ref, phase + " Assigned Team", teamValue, "Invalid Team — not found"));
+                } else if (count > 1) {
+                    errors.add(err(rn, ref, phase + " Assigned Team", teamValue,
+                            "Ambiguous Team — Sub Domain '" + teamName + "' exists under more than one Domain"));
+                }
+            }
+        }
+
+        for (String expected : PHASES) {
+            if (!seen.contains(expected)) {
+                errors.add(err(row.getRowNumber(), ref, "Phase", expected, "Missing phase row for Activity Ref " + ref));
+            }
+        }
+    }
+
+    /** The procedure takes a Sub Domain name: last segment of the Team Path, or the
+     *  activity's own Sub Domain when the Team column is blank. */
+    private String resolveTeamName(PlanActivityExcelRowDto row, PlanActivityExcelPhaseDto p) {
+        if (isBlank(p.getTeamPath())) return safe(row.getChmSubDomainName());
+        String[] parts = p.getTeamPath().split(TEAM_PATH_SEPARATOR);
+        return parts[parts.length - 1].trim();
+    }
+
+    private List<String> buildTeamPaths(OrgHierarchyResponse hierarchy) {
+        Map<Long, VerticalDto> verticals = new HashMap<>();
+        for (VerticalDto v : hierarchy.getVerticals()) verticals.put(v.getId(), v);
+        Map<Long, TeamFunctionDto> functions = new HashMap<>();
+        for (TeamFunctionDto f : hierarchy.getTeamFunction()) functions.put(f.getId(), f);
+        Map<Long, DomainDto> domains = new HashMap<>();
+        for (DomainDto d : hierarchy.getDomains()) domains.put(d.getId(), d);
+
+        List<String> paths = new ArrayList<>();
+        for (SubDomainDto sd : hierarchy.getSubDomains()) {
+            DomainDto d = domains.get(sd.getDomainId());
+            TeamFunctionDto f = d == null ? null : functions.get(d.getFunctionId());
+            VerticalDto v = f == null ? null : verticals.get(f.getVerticalId());
+            if (v == null) continue;
+            paths.add(normalizePath(String.join(TEAM_PATH_SEPARATOR,
+                    v.getName(), f.getName(), d.getName(), sd.getName())));
+        }
+        return paths;
+    }
+
+    private String normalizePath(String path) {
+        StringBuilder sb = new StringBuilder();
+        for (String part : path.split(TEAM_PATH_SEPARATOR)) {
+            if (!sb.isEmpty()) sb.append(" > ");
+            sb.append(part.trim());
+        }
+        return sb.toString();
+    }
+
+    private PlanActivityExcelPhaseDto findPhase(PlanActivityExcelRowDto row, String phase) {
+        for (PlanActivityExcelPhaseDto p : row.getPhases()) {
+            if (phase.equalsIgnoreCase(safe(p.getPhase()))) return p;
+        }
+        return null;
+    }
+
     private void checkDuplicateActivity(List<PlanActivityValidationErrorDto> errors, Long actorUserId, int rn,
                                          PlanActivityExcelRowDto row, DomainDto domain, SubDomainDto subDomain,
                                          Map<String, Integer> comboActivityFirstRow,
                                          Map<String, Integer> comboPlanIdCache,
                                          Map<Integer, List<ActivityPhaseViewDTO.ActivityEntry>> planActivitiesCache) {
 
+        String ref = row.getActivityRef();
         String comboKey = String.join("|",
                 String.valueOf(domain.getId()), String.valueOf(subDomain.getId()),
                 safe(row.getLayer()), safe(row.getPlanType()),
@@ -741,19 +439,14 @@ public class PlanActivityExcelService extends BaseService {
         Integer priorRow = comboActivityFirstRow.get(activityKey);
 
         if (priorRow != null) {
-            errors.add(err(rn, "Activity Name", row.getActivityName(),
+            errors.add(err(rn, ref, "Activity Name", row.getActivityName(),
                     "Duplicate Activity — same name already used for this Plan on row " + priorRow));
         } else {
             comboActivityFirstRow.put(activityKey, rn);
         }
 
-        // Resolve whether a Plan matching this exact combo already exists (via the
-        // working sp_get_plan_details — mirrors sp_insert_plan_activity's own
-        // "Plan Check" match on chm_domain/chm_sub_domain/layer/plan_type/
-        // vendor_oem/change_impact), then look up its activities (via the working
-        // sp_get_activity_phase_view). Deliberately NOT using GET /activity/view here —
-        // its sp_get_activity_details still joins a table named PLAN_MASTER that no
-        // longer exists in this schema (pre-existing bug, out of scope to fix here).
+        // Same Plan match as sp_insert_plan_activity's "EXISTING PLAN" lookup
+        // (chm_domain/chm_sub_domain/layer/plan_type/vendor_oem/change_impact).
         Integer planId = comboPlanIdCache.computeIfAbsent(comboKey, k -> {
             try {
                 PageResponseDto<PlanDetailsDto> page = planSetupService.getPlanDetails(
@@ -772,7 +465,7 @@ public class PlanActivityExcelService extends BaseService {
             }
         });
 
-        if (planId == null || planId < 0) {
+        if (planId < 0) {
             return; // no existing Plan for this combo yet — nothing to collide with in the DB
         }
 
@@ -788,71 +481,21 @@ public class PlanActivityExcelService extends BaseService {
                 a.getActivityName() != null && a.getActivityName().trim().equalsIgnoreCase(row.getActivityName().trim()));
 
         if (existsInDb) {
-            errors.add(err(rn, "Activity Name", row.getActivityName(),
+            errors.add(err(rn, ref, "Activity Name", row.getActivityName(),
                     "Duplicate Activity — an activity with this name already exists for this Plan"));
         }
     }
 
-    private void validatePhase(List<PlanActivityValidationErrorDto> errors, int rn, String label,
-                                String shift, String minLevel, Integer time,
-                                Integer daysMargin, Integer reservationMargin, Integer rollbackTime,
-                                boolean hasMargins, String teamName,
-                                Map<String, SubDomainDto> subDomainByNameFlat) {
-
-        if (isBlank(shift)) {
-            errors.add(err(rn, label + " Shift", shift, "Required"));
-        } else if (!SHIFT_OPTIONS.contains(shift.trim().toUpperCase())) {
-            errors.add(err(rn, label + " Shift", shift, "Invalid Shift — must be one of " + SHIFT_OPTIONS));
-        }
-
-        if (isBlank(minLevel)) {
-            errors.add(err(rn, label + " Min Level", minLevel, "Required"));
-        } else if (!LEVEL_OPTIONS.contains(minLevel.trim().toUpperCase())) {
-            errors.add(err(rn, label + " Min Level", minLevel, "Invalid Level — must be one of " + LEVEL_OPTIONS));
-        }
-
-        if (time == null) {
-            errors.add(err(rn, label + " Time (Min)", "", "Required or must be a valid non-negative number"));
-        } else if (time < 0) {
-            errors.add(err(rn, label + " Time (Min)", String.valueOf(time), "Must be a non-negative number"));
-        }
-
-        if (hasMargins) {
-            if (daysMargin == null || daysMargin < 0) {
-                errors.add(err(rn, label + " Days Margin", str(daysMargin),
-                        daysMargin == null ? "Required or must be a valid non-negative number" : "Must be a non-negative number"));
-            }
-            if (reservationMargin == null || reservationMargin < 0) {
-                errors.add(err(rn, label + " Reservation Margin", str(reservationMargin),
-                        reservationMargin == null ? "Required or must be a valid non-negative number" : "Must be a non-negative number"));
-            }
-            if (rollbackTime == null || rollbackTime < 0) {
-                errors.add(err(rn, label + " Rollback Time", str(rollbackTime),
-                        rollbackTime == null ? "Required or must be a valid non-negative number" : "Must be a non-negative number"));
-            }
-        }
-
-        if (isBlank(teamName)) {
-            errors.add(err(rn, label + " Team", teamName, "Required"));
-        } else if (!subDomainByNameFlat.containsKey(teamName.trim())) {
-            errors.add(err(rn, label + " Team", teamName, "Invalid Team — not found"));
-        }
+    private void nonNegative(List<PlanActivityValidationErrorDto> errors, int rn, String ref, String column, Integer value) {
+        if (value != null && value < 0) errors.add(err(rn, ref, column, str(value), "Must be a non-negative number"));
     }
 
-    private void requireText(List<PlanActivityValidationErrorDto> errors, int rn, String column, String value) {
-        if (isBlank(value)) errors.add(err(rn, column, value, "Required"));
+    private void requireText(List<PlanActivityValidationErrorDto> errors, int rn, String ref, String column, String value) {
+        if (isBlank(value)) errors.add(err(rn, ref, column, value, "Required (on the CRQ Review row)"));
     }
 
-    private void requireOneOf(List<PlanActivityValidationErrorDto> errors, int rn, String column, String value, List<String> allowed) {
-        if (isBlank(value)) {
-            errors.add(err(rn, column, value, "Required"));
-        } else if (allowed.stream().noneMatch(a -> a.equalsIgnoreCase(value.trim()))) {
-            errors.add(err(rn, column, value, "Invalid value — must be one of " + allowed));
-        }
-    }
-
-    private PlanActivityValidationErrorDto err(int rn, String column, String value, String error) {
-        return new PlanActivityValidationErrorDto(rn, column, value, error);
+    private PlanActivityValidationErrorDto err(int rn, String ref, String column, String value, String error) {
+        return new PlanActivityValidationErrorDto(rn, ref, column, value, error);
     }
 
     private boolean isBlank(String s) {
@@ -875,7 +518,8 @@ public class PlanActivityExcelService extends BaseService {
     // Batch insert
     // ─────────────────────────────────────────────────────────────────────────
 
-    @Transactional
+    // Not @Transactional: sp_insert_plan_activity runs its own START TRANSACTION / COMMIT
+    // per phase, so each phase is committed as soon as its call returns.
     public PlanActivityExcelUploadSummaryDto insertBatch(Long actorUserId, List<PlanActivityExcelRowDto> rows) {
         long start = System.currentTimeMillis();
         List<PlanActivityExcelRowResultDto> results = new ArrayList<>();
@@ -883,47 +527,60 @@ public class PlanActivityExcelService extends BaseService {
         if (rows == null) rows = List.of();
 
         List<PlanActivityValidationErrorDto> errors = validateRows(actorUserId, rows);
-        Map<Integer, String> firstErrorByRow = new LinkedHashMap<>();
+        Map<String, String> firstErrorByRef = new LinkedHashMap<>();
         for (PlanActivityValidationErrorDto e : errors) {
-            firstErrorByRow.putIfAbsent(e.getRowNumber(), e.getColumn() + ": " + e.getError());
+            firstErrorByRef.putIfAbsent(e.getActivityRef(),
+                    "Row " + e.getRowNumber() + " — " + e.getColumn() + ": " + e.getError());
         }
 
-        String sql = "CALL sp_insert_plan_activity(" + "?,".repeat(36) + "?)";
+        String sql = "CALL sp_insert_plan_activity(" + "?,".repeat(18) + "?)";
 
         int success = 0;
         int failed = 0;
 
         for (PlanActivityExcelRowDto row : rows) {
-            if (firstErrorByRow.containsKey(row.getRowNumber())) {
+            if (firstErrorByRef.containsKey(row.getActivityRef())) {
                 failed++;
                 results.add(new PlanActivityExcelRowResultDto(
-                        row.getRowNumber(), row.getActivityName(), "FAILED",
-                        firstErrorByRow.get(row.getRowNumber()), null, null));
+                        row.getRowNumber(), row.getActivityRef(), row.getActivityName(), "FAILED",
+                        firstErrorByRef.get(row.getActivityRef()), null, null));
                 continue;
             }
 
-            try {
-                Object[] params = PlanActivityExcelMapper.toSqlParams(actorUserId, row);
-                LOGGER.info("Row {} -> {}", row.getRowNumber(),
-                        CommonService.formatProcedureCall("sp_insert_plan_activity", params));
+            PlanActivityInsertResultDto last = null;
+            String failure = null;
+            int saved = 0;
 
-                List<PlanActivityInsertResultDto> resultRows = databaseUtils.executeProcedureGetDataWithError(
-                        jdbcTemplateTwo, sql, PlanActivityInsertResultDto.class, params);
+            for (String phaseName : PHASES) {
+                PlanActivityExcelPhaseDto phase = findPhase(row, phaseName);
+                assert phase != null;
+                phase.setPhase(phaseName); // canonical spelling for the procedure's CASE
+                try {
+                    Object[] params = PlanActivityExcelMapper.toSqlParams(
+                            actorUserId, row, phase, resolveTeamName(row, phase));
+                    LOGGER.info("Row {} -> {}", phase.getRowNumber(),
+                            CommonService.formatProcedureCall("sp_insert_plan_activity", params));
 
-                PlanActivityInsertResultDto r = resultRows.isEmpty() ? null : resultRows.get(0);
-                success++;
-                results.add(new PlanActivityExcelRowResultDto(
-                        row.getRowNumber(), row.getActivityName(), "SUCCESS",
-                        r != null ? r.getMessage() : "Inserted",
-                        r != null ? r.getPlanId() : null,
-                        r != null ? r.getActivityId() : null));
-
-            } catch (Exception ex) {
-                LOGGER.error("Row {} failed", row.getRowNumber(), ex);
-                failed++;
-                results.add(new PlanActivityExcelRowResultDto(
-                        row.getRowNumber(), row.getActivityName(), "FAILED", ex.getMessage(), null, null));
+                    List<PlanActivityInsertResultDto> resultRows = databaseUtils.executeProcedureGetDataWithError(
+                            jdbcTemplateTwo, sql, PlanActivityInsertResultDto.class, params);
+                    if (!resultRows.isEmpty()) last = resultRows.get(0);
+                    saved++;
+                } catch (Exception ex) {
+                    LOGGER.error("Row {} ({}) failed", phase.getRowNumber(), phaseName, ex);
+                    failure = "Row " + phase.getRowNumber() + " — " + phaseName + ": " + ex.getMessage()
+                            + (saved > 0 ? " (" + saved + " earlier phase(s) were already saved)" : "");
+                    break;
+                }
             }
+
+            if (failure == null) success++;
+            else failed++;
+            results.add(new PlanActivityExcelRowResultDto(
+                    row.getRowNumber(), row.getActivityRef(), row.getActivityName(),
+                    failure == null ? "SUCCESS" : "FAILED",
+                    failure == null ? "Inserted " + PHASES.size() + " phases" : failure,
+                    last != null ? last.getPlanId() : null,
+                    last != null ? last.getActivityId() : null));
         }
 
         long elapsed = System.currentTimeMillis() - start;

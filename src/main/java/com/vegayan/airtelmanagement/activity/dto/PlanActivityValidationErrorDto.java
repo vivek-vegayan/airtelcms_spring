@@ -7,6 +7,7 @@ import lombok.Data;
 @AllArgsConstructor
 public class PlanActivityValidationErrorDto {
     private int rowNumber;
+    private String activityRef;
     private String column;
     private String value;
     private String error;

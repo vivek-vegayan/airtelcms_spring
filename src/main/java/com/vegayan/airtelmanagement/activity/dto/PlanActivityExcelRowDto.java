@@ -2,16 +2,25 @@ package com.vegayan.airtelmanagement.activity.dto;
 
 import lombok.Data;
 
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * One Activity block of the Upload sheet (6 phase rows sharing an Activity Ref).
+ * Plan / Activity fields come from the block's CRQ Review row only.
+ */
 @Data
 public class PlanActivityExcelRowDto {
 
-    private int rowNumber;
+    private int rowNumber;          // Excel row of the block's first row
+    private String activityRef;
 
     // ── Organization Hierarchy ───────────────────────────────────────────
     private String verticalName;
     private String functionName;
     private String chmDomainName;
     private String chmSubDomainName;
+    private String networkDomain;
 
     // ── Plan Information ─────────────────────────────────────────────────
     private String layer;
@@ -19,39 +28,8 @@ public class PlanActivityExcelRowDto {
     private String vendorOem;
     private String changeImpact;
 
-    // ── Activity Information ─────────────────────────────────────────────
+    // ── Activity ─────────────────────────────────────────────────────────
     private String activityName;
 
-    private String crqReviewShift;
-    private String crqReviewMinimumLevelRequirement;
-    private Integer crqReviewRequiredTimeMinutes;
-    private String crqReviewTeamName;
-
-    private String impactAnalysisShift;
-    private String impactAnalysisMinimumLevelRequirement;
-    private Integer impactAnalysisRequiredTimeMinutes;
-    private String impactAnalysisTeamName;
-
-    private String schedulingShift;
-    private String schedulingMinimumLevelRequirement;
-    private Integer schedulingRequiredTimeMinutes;
-    private String schedulingTeamName;
-
-    private String mopCreateShift;
-    private String mopCreateMinimumLevelRequirement;
-    private Integer mopCreateRequiredTimeMinutes;
-    private String mopCreateTeamName;
-
-    private String mopValidateShift;
-    private String mopValidateMinimumLevelRequirement;
-    private Integer mopValidateRequiredTimeMinutes;
-    private String mopValidateTeamName;
-
-    private String crqExecutionShift;
-    private String crqExecutionMinimumLevelRequirement;
-    private Integer crqExecutionRequiredTimeMinutes;
-    private Integer crqExecutionDaysMargin;
-    private Integer crqExecutionReservationMargin;
-    private Integer crqExecutionRollbackTime;
-    private String crqExecutionTeamName;
+    private List<PlanActivityExcelPhaseDto> phases = new ArrayList<>();
 }

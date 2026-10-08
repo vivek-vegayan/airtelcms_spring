@@ -210,6 +210,19 @@ public class ActivityService extends BaseService {
         );
     }
 
+    public List<PlanShiftDropdownDto> getPlanShiftDropdown() {
+
+        String sql = "CALL activity_plan_shift_dropdown()";
+
+        LOGGER.info("call activity_plan_shift_dropdown();");
+
+        return databaseUtils.executeProcedureGetDataWithError(
+                jdbcTemplateTwo,
+                sql,
+                PlanShiftDropdownDto.class
+        );
+    }
+
     public List<NetworkDomainDropdownDto> getNetworkDomainDropdown() {
 
         String sql = "CALL sp_get_domain_dropdown()";

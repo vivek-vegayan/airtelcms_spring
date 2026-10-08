@@ -4,18 +4,15 @@ import com.vegayan.airtelmanagement.activity.dto.PlanActivityExcelParseResponseD
 import com.vegayan.airtelmanagement.activity.dto.PlanActivityExcelRowDto;
 import com.vegayan.airtelmanagement.activity.dto.PlanActivityExcelUploadSummaryDto;
 import com.vegayan.airtelmanagement.activity.service.PlanActivityExcelService;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayOutputStream;
 import java.util.List;
 
 
+/** The upload template is a static file served by the React app (public/templates). */
 @RestController
 @RequestMapping("/activity/excel")
 public class PlanActivityExcelController {
@@ -24,21 +21,6 @@ public class PlanActivityExcelController {
 
     public PlanActivityExcelController(PlanActivityExcelService planActivityExcelService) {
         this.planActivityExcelService = planActivityExcelService;
-    }
-
-    @GetMapping("/v1/template")
-    public ResponseEntity<byte[]> downloadTemplate(Authentication authentication) throws Exception {
-        Long actorUserId = Long.valueOf(authentication.getName());
-
-        Workbook workbook = planActivityExcelService.generateTemplate(actorUserId);
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        workbook.write(out);
-        workbook.close();
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=Plan_Activity_Upload_Template.xlsx")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(out.toByteArray());
     }
 
     @PostMapping("/v1/parse")

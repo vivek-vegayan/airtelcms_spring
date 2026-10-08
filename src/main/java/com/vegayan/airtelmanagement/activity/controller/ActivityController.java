@@ -5,6 +5,7 @@ import com.vegayan.airtelmanagement.activity.dto.ActivityInsertRequestDTO;
 import com.vegayan.airtelmanagement.activity.dto.ActivityPhaseViewDTO;
 import com.vegayan.airtelmanagement.activity.dto.LayerDropdownDto;
 import com.vegayan.airtelmanagement.activity.dto.NetworkDomainDropdownDto;
+import com.vegayan.airtelmanagement.activity.dto.PlanShiftDropdownDto;
 import com.vegayan.airtelmanagement.activity.dto.UpdateActivityPhaseDto;
 import com.vegayan.airtelmanagement.activity.dto.UpdatePlanDto;
 import com.vegayan.airtelmanagement.activity.service.ActivityService;
@@ -95,6 +96,11 @@ public class ActivityController {
     @GetMapping("/layerdropdown")
     public List<LayerDropdownDto> getLayerDropdown() {
         return activityService.getLayerDropdown();
+    }
+
+    @GetMapping("/planshiftdropdown")
+    public List<PlanShiftDropdownDto> getPlanShiftDropdown() {
+        return activityService.getPlanShiftDropdown();
     }
 
     @GetMapping("/networkdomaindropdown")

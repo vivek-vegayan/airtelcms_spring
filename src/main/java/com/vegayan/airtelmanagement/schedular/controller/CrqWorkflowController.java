@@ -18,6 +18,7 @@ import com.vegayan.airtelmanagement.schedular.dto.MopValidateDetailsDto;
 import com.vegayan.airtelmanagement.schedular.dto.PlanDtoNew;
 import com.vegayan.airtelmanagement.schedular.dto.PlanResponseDtoNew;
 import com.vegayan.airtelmanagement.schedular.dto.ScriptResponse;
+import com.vegayan.airtelmanagement.schedular.dto.StageHistoryEntryDto;
 import com.vegayan.airtelmanagement.schedular.service.CrqWorkflowService;
 import com.jcraft.jsch.JSchException;
 import lombok.RequiredArgsConstructor;
@@ -113,6 +114,12 @@ public class CrqWorkflowController {
         Long actorUserId = Long.valueOf(authentication.getName());
         return crqWorkflowService.getCancelledCrqSummary(
                 actorUserId, verticalId, functionId, domainId, subDomainId, search);
+    }
+
+    /** Stage history of one CRQ - loaded on demand by the listing pages. */
+    @GetMapping("/{crqNo}/history")
+    public List<StageHistoryEntryDto> getCrqStageHistory(@PathVariable String crqNo) {
+        return crqWorkflowService.getStageHistoryByCrqNo(crqNo);
     }
 
     @GetMapping("/{crqNo}/plan-pdf")

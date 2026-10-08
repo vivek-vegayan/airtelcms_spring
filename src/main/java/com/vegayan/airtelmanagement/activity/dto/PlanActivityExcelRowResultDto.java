@@ -7,6 +7,7 @@ import lombok.Data;
 @AllArgsConstructor
 public class PlanActivityExcelRowResultDto {
     private int rowNumber;
+    private String activityRef;
     private String activityName;
     private String status; // SUCCESS | FAILED
     private String message;
