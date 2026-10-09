@@ -205,94 +205,123 @@ public class SubmitPlanningExternalService extends BaseService {
             // EXACT query (DO NOT encode manually)
             String query = "'Infrastructure Change ID'=\"" + crqNo + "\"";
 
-            String rawFields =
-                    "values(" +
-                            "Infrastructure Change ID," +
-                            "Change Request Status," +
-                            "Description," +
-                            "ASORG," +
-                            "ASCPY," +
-                            "ASGRP," +
-                            "Categorization Tier 1," +
-                            "Categorization Tier 2," +
-                            "Categorization Tier 3," +
-                            "Requested Start Date," +
-                            "Requested End Date," +
-                            "ChangeImpact," +
-                            "Type of CR," +
-                            "Device Type," +
-                            "Domain," +
-                            "Company3," +
-                            "Support Organization," +
-                            "Support Group Name," +
-                            "CAB Manager Dummy," +
-                            "ASCHG," +
-                            "ChgImpCpy," +
-                            "ChgImpOrg," +
-                            "ChgImpGrp," +
-                            "ChgImp," +
-                            "Change Requester," +
-                            "Plan Document Available," +
-                            "AvailableSlotChecked," +
-                            "Change_Owner_TNG," +
-                            "Node or Router Details," +
-                            "Network Type," +
-                            "Network Type_NSG," +
-                            "Vendor_Name," +
-                            "ARTL_HardwareChange," +
-                            "Customer_Type," +
-                            "Domain_1," +
-                            "Plan Id," +
-                            "Impacted Parties," +
-                            "Owner Name & Contact_TNG," +
-                            "Host Name," +
-                            "Detailed Description," +
-                            "DTT," +
-                            "SQ Status," +
-                            "Region," +
-                            "Change Timing," +
-                            "Completed Time," +
-                            "Completed Date," +
-                            "Location," +
-                            "Engineer_Name," +
-                            "TNG_DN_ScheduleJustification," +
-                            "NOCEnggOLMID," +
-                            "Actual Start Date," +
-                            "Actual End Date," +
-                            "Contact_Number1," +
-                            "Performance AT Check," +
-                            "MOP Document Checked," +
-                            "Technician_Name," +
-                            "Actual Start Hours," +
-                            "Actual Start Mins," +
-                            "Actual Start Secs," +
-                            "Actual End Hours," +
-                            "Actual End Mins," +
-                            "Actual End Secs," +
-                            "MOP Document," +
-                            "Approval Phase Name," +
-                            "Change Activity Done," +
-                            "Change Manager Phone No," +
-                            "ScheduleTimeline," +
-                            "MOP Validated By," +
-                            "CRQ Time," +
-                            "ANG_RSUIp1," +
-                            "ReasonforCancellationRejection," +
-                            "CancellationRejectionOwner," +
-                            "ReasonforCancellationRejectionDeviation," +
-                            "Actual Impact," +
-                            "Technology_MIS," +
-                            "Activity Impact Analysis Done," +
-                            "TNG_NE_NodeName," +
-                            "Count_NSG," +
-                            "MOPRequired_Within," +
-                            "SOP Document," +
-                            "MOP Created By," +
-                            "Scheduled Time," +
-                            "MOP Validation Remark," +
-                            "Scheduled Start Date," +
-                            "Scheduled End Date" +
-                            ")";
+//            String rawFields =
+//                    "values(" +
+//                            "Infrastructure Change ID," +
+//                            "Change Request Status," +
+//                            "Description," +
+//                            "ASORG," +
+//                            "ASCPY," +
+//                            "ASGRP," +
+//                            "Categorization Tier 1," +
+//                            "Categorization Tier 2," +
+//                            "Categorization Tier 3," +
+//                            "Requested Start Date," +
+//                            "Requested End Date," +
+//                            "ChangeImpact," +
+//                            "Type of CR," +
+//                            "Device Type," +
+//                            "Domain," +
+//                            "Company3," +
+//                            "Support Organization," +
+//                            "Support Group Name," +
+//                            "CAB Manager Dummy," +
+//                            "ASCHG," +
+//                            "ChgImpCpy," +
+//                            "ChgImpOrg," +
+//                            "ChgImpGrp," +
+//                            "ChgImp," +
+//                            "Change Requester," +
+//                            "Plan Document Available," +
+//                            "AvailableSlotChecked," +
+//                            "Change_Owner_TNG," +
+//                            "Node or Router Details," +
+//                            "Network Type," +
+//                            "Network Type_NSG," +
+//                            "Vendor_Name," +
+//                            "ARTL_HardwareChange," +
+//                            "Customer_Type," +
+//                            "Domain_1," +
+//                            "Plan Id," +
+//                            "Impacted Parties," +
+//                            "Owner Name & Contact_TNG," +
+//                            "Host Name," +
+//                            "Detailed Description," +
+//                            "DTT," +
+//                            "SQ Status," +
+//                            "Region," +
+//                            "Change Timing," +
+//                            "Completed Time," +
+//                            "Completed Date," +
+//                            "Location," +
+//                            "Engineer_Name," +
+//                            "TNG_DN_ScheduleJustification," +
+//                            "NOCEnggOLMID," +
+//                            "Actual Start Date," +
+//                            "Actual End Date," +
+//                            "Contact_Number1," +
+//                            "Performance AT Check," +
+//                            "MOP Document Checked," +
+//                            "Technician_Name," +
+//                            "Actual Start Hours," +
+//                            "Actual Start Mins," +
+//                            "Actual Start Secs," +
+//                            "Actual End Hours," +
+//                            "Actual End Mins," +
+//                            "Actual End Secs," +
+//                            "MOP Document," +
+//                            "Approval Phase Name," +
+//                            "Change Activity Done," +
+//                            "Change Manager Phone No," +
+//                            "ScheduleTimeline," +
+//                            "MOP Validated By," +
+//                            "CRQ Time," +
+//                            "ANG_RSUIp1," +
+//                            "ReasonforCancellationRejection," +
+//                            "CancellationRejectionOwner," +
+//                            "ReasonforCancellationRejectionDeviation," +
+//                            "Actual Impact," +
+//                            "Technology_MIS," +
+//                            "Activity Impact Analysis Done," +
+//                            "TNG_NE_NodeName," +
+//                            "Count_NSG," +
+//                            "MOPRequired_Within," +
+//                            "SOP Document," +
+//                            "MOP Created By," +
+//                            "Scheduled Time," +
+//                            "MOP Validation Remark," +
+//                            "Scheduled Start Date," +
+//                            "Scheduled End Date" +
+//                            ")";
+
+            String rawFields = "values(" +
+                    "Infrastructure Change ID," +
+                    "Change Request Status," +
+                    "Plan Id," +
+                    "Description," +
+                    "ASORG," +
+                    "ASCPY," +
+                    "ASGRP," +
+                    "Requested Start Date," +
+                    "Requested End Date," +
+                    "ChangeImpact," +
+                    "Type of CR," +
+                    "Device Type," +
+                    "Domain," +
+                    "Company3," +
+                    "Support Organization," +
+                    "Support Group Name," +
+                    "ASCHG," +
+                    "ChgImpCpy," +
+                    "ChgImpOrg," +
+                    "ChgImpGrp," +
+                    "ChgImp," +
+                    "Change Requester," +
+                    "Actual Start Date," +
+                    "Actual End Date," +
+                    "Scheduled Start Date," +
+                    "Scheduled End Date" +
+                    ")";
 
             URI baseUri = URI.create(getRemedyBaseUrl());
 
@@ -347,8 +376,98 @@ public class SubmitPlanningExternalService extends BaseService {
             Timestamp endTs =
                     DateTimeUtils.parseRemedyDateToIST(v.getRequestedEndDate());
 
-//            String sql = "CALL Insert_CRQ_Remedy_Details(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-
+//            String sql = "CALL Insert_CRQ_Remedy_Details(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+//
+//            Object[] params = new Object[]{
+//                    v.getInfrastructureChangeID(),
+//                    v.getChangeRequestStatus(),
+//                    v.getDescription(),
+//                    v.getASORG(),
+//                    v.getASCPY(),
+//                    v.getASGRP(),
+//                    v.getCategorizationTier1(),
+//                    v.getCategorizationTier2(),
+//                    v.getCategorizationTier3(),
+//                    startTs,
+//                    endTs,
+//                    v.getChangeImpact(),
+//                    v.getTypeofCR(),
+//                    v.getDeviceType(),
+//                    v.getDomain(),
+//                    v.getCompany3(),
+//                    v.getSupportOrganization(),
+//                    v.getSupportGroupName(),
+//                    v.getCABManagerDummy(),
+//                    v.getASCHG(),
+//                    v.getChgImpCpy(),
+//                    v.getChgImpOrg(),
+//                    v.getChgImpGrp(),
+//                    v.getChgImp(),
+//                    v.getChangeRequester(),
+//                    v.getPlanDocumentAvailable(),
+//                    v.getAvailableSlotChecked(),
+//                    v.getChangeOwnerTNG(),
+//                    v.getNodeOrRouterDetails(),
+//                    v.getNetworkType(),
+//                    v.getNetworkTypeNSG(),
+//                    v.getVendorName(),
+//                    v.getARTLHardwareChange(),
+//                    v.getCustomerType(),
+//                    v.getDomain1(),
+//                    v.getPlanId(),
+//                    v.getImpactedParties(),
+//                    v.getOwnerNameAndContactTNG(),
+//                    v.getHostName(),
+//                    v.getDetailedDescription(),
+//
+//                    // new fields
+//                    v.getDtt(),
+//                    v.getSqStatus(),
+//                    v.getRegion(),
+//                    v.getChangeTiming(),
+//                    v.getCompletedTime(),
+//                    v.getCompletedDate(),
+//                    v.getLocation(),
+//                    v.getEngineerName(),
+//                    v.getTngDnScheduleJustification(),
+//                    v.getNocEnggOlmid(),
+//                    v.getActualStartDate(),
+//                    v.getActualEndDate(),
+//                    v.getContactNumber1(),
+//                    v.getPerformanceATCheck(),
+//                    v.getMopDocumentChecked(),
+//                    v.getTechnicianName(),
+//                    v.getActualStartHours(),
+//                    v.getActualStartMins(),
+//                    v.getActualStartSecs(),
+//                    v.getActualEndHours(),
+//                    v.getActualEndMins(),
+//                    v.getActualEndSecs(),
+//                    v.getMopDocument(),
+//                    v.getApprovalPhaseName(),
+//                    v.getChangeActivityDone(),
+//                    v.getChangeManagerPhoneNo(),
+//
+//                    v.getScheduleTimeline(),
+//                    v.getMopValidatedBy(),
+//                    v.getCrqTime(),
+//                    v.getAngRsUIp1(),
+//                    v.getReasonforCancellationRejection(),
+//                    v.getCancellationRejectionOwner(),
+//                    v.getReasonforCancellationRejectionDeviation(),
+//                    v.getActualImpact(),
+//                    v.getTechnologyMIS(),
+//                    v.getActivityImpactAnalysisDone(),
+//                    v.getTngNENodeName(),
+//                    v.getCountNSG(),
+//                    v.getMopRequiredWithin(),
+//                    v.getSopDocument(),
+//                    v.getMopCreatedBy(),
+//                    v.getScheduledTime(),
+//                    v.getMopValidationRemark(),
+//                    v.getScheduledStartDate(),
+//                    v.getScheduledEndDate()
+//            };
             String sql = "CALL Insert_CRQ_Remedy_Details(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
             Object[] params = new Object[]{

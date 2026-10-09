@@ -3,12 +3,14 @@ package com.vegayan.airtelmanagement.sygnet.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vegayan.airtelmanagement.common.service.BaseService;
 import com.vegayan.airtelmanagement.common.util.SslWebClientUtil;
+import com.vegayan.airtelmanagement.sygnet.dto.CrqStatusUpdateResponseDto;
 import com.vegayan.airtelmanagement.sygnet.dto.PushCrqPayload;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriComponentsBuilder;
+import reactor.core.publisher.Mono;
 
 
 import java.net.URI;
@@ -67,8 +69,12 @@ public class PushCrqStatusService extends BaseService {
                         h.add("auth-token", cygnetToken);
                     })
                     .bodyValue(jsonPayload.getBytes(StandardCharsets.UTF_8))
-                    .retrieve()
-                    .bodyToMono(String.class)
+//                    .retrieve()
+//                    .bodyToMono(String.class)
+                    .exchangeToMono(response -> {
+                        cancelCrqLog.info("[CYGNET] HTTP Status: {}", response.statusCode());
+                        return response.bodyToMono(String.class).defaultIfEmpty("");
+                    })
                     .block();
 
             cancelCrqLog.info("[CYGNET] Response for CRQ {}: {}", crqNo, responseText);
