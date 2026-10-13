@@ -15,5 +15,9 @@ public class FutureWeekResponseDto {
 
     private Integer isoWeek;
 
+    private String weekStartDate;
+
+    private String weekEndDate;
+
     private List<FutureWeekRowDto> data;
 }

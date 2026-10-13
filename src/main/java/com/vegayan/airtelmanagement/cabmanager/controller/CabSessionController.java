@@ -5,6 +5,7 @@ import com.vegayan.airtelmanagement.audit.AuditModule;
 import com.vegayan.airtelmanagement.audit.annotation.Auditable;
 import com.vegayan.airtelmanagement.cabmanager.dto.AddCrqToSessionRequest;
 import com.vegayan.airtelmanagement.cabmanager.dto.AddCrqToSessionResultDto;
+import com.vegayan.airtelmanagement.cabmanager.dto.AddExternalCrqToSessionRequest;
 import com.vegayan.airtelmanagement.cabmanager.dto.CabAgendaRowDto;
 import com.vegayan.airtelmanagement.cabmanager.dto.CabPlanConflictDto;
 import com.vegayan.airtelmanagement.cabmanager.dto.CabSessionCrqActionRequest;
@@ -69,6 +70,20 @@ public class CabSessionController {
             Authentication authentication) {
         Long actorUserId = Long.valueOf(authentication.getName());
         return cabSessionService.addCrqsToSession(sessionId, body, actorUserId);
+    }
+
+    @Auditable(module = AuditModule.CAB_MANAGER,
+               subModule = AuditModule.SUB_CAB_SESSION,
+               action = AuditAction.UPDATE,
+               remark = "Added external CRQs to a CAB session",
+               keyParams = {"sessionId"})
+    @PostMapping("/{sessionId}/external-crqs")
+    public AddCrqToSessionResultDto addExternalCrqsToSession(
+            @PathVariable String sessionId,
+            @RequestBody AddExternalCrqToSessionRequest body,
+            Authentication authentication) {
+        Long actorUserId = Long.valueOf(authentication.getName());
+        return cabSessionService.addExternalCrqsToSession(sessionId, body, actorUserId);
     }
 
 

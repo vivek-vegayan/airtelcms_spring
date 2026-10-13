@@ -84,6 +84,8 @@ public class FutureWeekService extends BaseService {
             FutureWeekRowDto first = rows.get(0);
             response.setIsoYear(first.getIsoYear());
             response.setIsoWeek(first.getIsoWeek());
+            response.setWeekStartDate(first.getWeekStartDate());
+            response.setWeekEndDate(first.getWeekEndDate());
         }
 
         return response;

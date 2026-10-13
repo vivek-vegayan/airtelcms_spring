@@ -7,6 +7,7 @@ public class CabAgendaRowDto {
     private Long mappingId;
     private String circle;
     private String crqNo;
+    private String typeOfActivity;
     private String nodeName;
     private String changeImpact;
     private String cabDecision;

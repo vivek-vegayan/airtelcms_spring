@@ -346,24 +346,53 @@ public class EmployeeExcelService extends BaseService {
         }
     }
 
+//    private void addDropdown(DataValidationHelper helper, Sheet sheet,
+//                             String rangeName, int column, boolean strict) {
+//        DataValidationConstraint constraint = helper.createFormulaListConstraint(rangeName);
+//        DataValidation validation = helper.createValidation(
+//                constraint, new CellRangeAddressList(DATA_ROW_START, DATA_ROW_END, column, column));
+//        if (strict) {
+//
+//            validation.setShowErrorBox(true);
+//            validation.setErrorStyle(DataValidation.ErrorStyle.STOP);
+//            validation.createErrorBox("Invalid Value", "Please select a value from the dropdown list.");
+//        } else {
+//            validation.setShowErrorBox(true);
+//            validation.setErrorStyle(DataValidation.ErrorStyle.WARNING);
+//            validation.createErrorBox("Value Not In List",
+//                    "This value is not predefined. You may still proceed, "
+//                            + "but ensure you have added it to the MASTER_DATA sheet first.");
+//        }
+//        validation.setShowPromptBox(true);
+//        validation.createPromptBox("Tip", "Select from the list or add new values to the MASTER_DATA sheet.");
+//        sheet.addValidationData(validation);
+//    }
+
     private void addDropdown(DataValidationHelper helper, Sheet sheet,
                              String rangeName, int column, boolean strict) {
-        DataValidationConstraint constraint = helper.createFormulaListConstraint(rangeName);
+
+        DataValidationConstraint constraint =
+                helper.createFormulaListConstraint(rangeName);
+
         DataValidation validation = helper.createValidation(
-                constraint, new CellRangeAddressList(DATA_ROW_START, DATA_ROW_END, column, column));
-        if (strict) {
-            validation.setShowErrorBox(true);
-            validation.setErrorStyle(DataValidation.ErrorStyle.STOP);
-            validation.createErrorBox("Invalid Value", "Please select a value from the dropdown list.");
-        } else {
-            validation.setShowErrorBox(true);
-            validation.setErrorStyle(DataValidation.ErrorStyle.WARNING);
-            validation.createErrorBox("Value Not In List",
-                    "This value is not predefined. You may still proceed, "
-                            + "but ensure you have added it to the MASTER_DATA sheet first.");
-        }
+                constraint,
+                new CellRangeAddressList(
+                        DATA_ROW_START, DATA_ROW_END, column, column
+                )
+        );
+
+        // Keep dropdown, but allow values not present in the list
+        validation.setShowErrorBox(false);
+        validation.setErrorStyle(DataValidation.ErrorStyle.WARNING);
+
+        validation.setSuppressDropDownArrow(false);
+
         validation.setShowPromptBox(true);
-        validation.createPromptBox("Tip", "Select from the list or add new values to the MASTER_DATA sheet.");
+        validation.createPromptBox(
+                "Tip",
+                "Select a value from the dropdown or type your own value."
+        );
+
         sheet.addValidationData(validation);
     }
 

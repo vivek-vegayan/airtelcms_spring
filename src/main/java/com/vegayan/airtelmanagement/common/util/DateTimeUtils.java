@@ -1,6 +1,8 @@
 package com.vegayan.airtelmanagement.common.util;
 
 import com.vegayan.airtelmanagement.common.service.BaseService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Timestamp;
 import java.time.*;
@@ -8,6 +10,8 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
 public class DateTimeUtils extends BaseService {
+
+    private static final Logger log = LoggerFactory.getLogger(DateTimeUtils.class);
 
     /** The zone every wall-clock time in this system is written and read in. */
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
@@ -105,7 +109,7 @@ public class DateTimeUtils extends BaseService {
             return Timestamp.valueOf(istDateTime.toLocalDateTime());
 
         } catch (Exception e) {
-            System.err.println("Unable to parse date: " + remedyDate);
+            log.warn("Unable to parse date: {}", remedyDate);
             return null;
         }
     }
@@ -140,7 +144,7 @@ public class DateTimeUtils extends BaseService {
             return utcZoned.format(OUTPUT_FORMATTER);
 
         } catch (Exception e) {
-            System.err.println("Invalid date format: " + dateTimeStr);
+            log.warn("Invalid date format: {}", dateTimeStr);
             return dateTimeStr; // fallback
         }
     }

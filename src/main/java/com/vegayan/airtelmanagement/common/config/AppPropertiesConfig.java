@@ -10,7 +10,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Getter
 @Setter
@@ -145,7 +146,7 @@ public class AppPropertiesConfig {
 
     @PostConstruct
     public void printLoadedProperties() {
-        Logger logger = Logger.getLogger(AppPropertiesConfig.class.getName());
+        Logger logger = LoggerFactory.getLogger(AppPropertiesConfig.class);
         logger.info("Loaded config:");
         logger.info("UserMgmt DB IP: " + DBSOURCE_USERMGMT_IP);
         logger.info("UserMgmt DB Name: " + DBSOURCE_USERMGMT_DBNAME);

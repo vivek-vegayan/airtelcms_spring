@@ -298,6 +298,40 @@
     </appender>
 
     <!-- ========================================================= -->
+    <!-- CFM_CRQ_DETAILS_API_EXTERNAL_APPENDER -->
+    <!-- ========================================================= -->
+    <appender name="CFM_CRQ_DETAILS_API_EXTERNAL_APPENDER"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>
+                ${LOG_DIR}/%d{yyyy-MM-dd}/Cfm_Crq_Details_API-%d{yyyy-MM-dd}.log
+            </fileNamePattern>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+
+    <!-- ================= APPLICATION LOG ================= -->
+
+    <appender name="APP_APPENDER" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/%d{yyyy-MM-dd}/Application-%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>5GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ========================================================= -->
     <!-- Logger                          -->
     <!-- ========================================================= -->
     <!--
@@ -308,10 +342,7 @@
         Set level="WARN" here to silence the whole stream without touching any
         application log level.
     -->
-    <logger name="SQL_PROC" level="INFO" additivity="false">
-        <appender-ref ref="CONSOLE"/>
-        <appender-ref ref="SQL_PROC_APPENDER"/>
-    </logger>
+
 
     <logger name="Create_Crq_Logger" level="INFO" additivity="false">
         <appender-ref ref="CREATE_CRQ_APPENDER"/>
@@ -363,15 +394,35 @@
         <appender-ref ref="CYGNET_PLAN_DATA_API_EXTERNAL_APPENDER"/>
     </logger>
 
+    <logger name="Cfm_Crq_Details_API" level="INFO" additivity="false">
+        <appender-ref ref="CFM_CRQ_DETAILS_API_EXTERNAL_APPENDER"/>
+    </logger>
 
 
 
 
 
+<!--    <logger name="SQL_PROC" level="INFO" additivity="false">-->
+<!--        <appender-ref ref="CONSOLE"/>-->
+<!--        <appender-ref ref="SQL_PROC_APPENDER"/>-->
+<!--    </logger>-->
 
+    <logger name="SQL_PROC" level="INFO" additivity="false">
+        <appender-ref ref="SQL_PROC_APPENDER"/>
+        <springProfile name="local">
+            <appender-ref ref="CONSOLE"/>
+        </springProfile>
+    </logger>
+
+<!--    <root level="INFO">-->
+<!--        <appender-ref ref="CONSOLE"/>-->
+<!--    </root>-->
 
     <root level="INFO">
-        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="APP_APPENDER"/>   → Application file (always)
+        <springProfile name="local">
+            <appender-ref ref="CONSOLE"/>    → screen ONLY if profile = local
+        </springProfile>
     </root>
 
 

@@ -109,13 +109,11 @@ public class EmployeeExcelValidationService {
                                                 ExcelMasterDataCache masterData) {
         String olmid = row.getOlmid();
 
-        checkDropdown(errorsByRow, rowNumber, olmid, "employmentType", row.getEmploymentType(), masterData::isEmploymentType);
+        // employmentType, vendorCompany, designation, officeLocation and
+        // deviceVendorCapability are free text: the template lets users type values
+        // outside the dropdown list, and the procedure stores them as-is.
         checkDropdown(errorsByRow, rowNumber, olmid, "roleCode", row.getRoleCode(), masterData::isRoleCode);
-        checkDropdown(errorsByRow, rowNumber, olmid, "vendorCompany", row.getVendorCompany(), masterData::isVendorCompany);
-        checkDropdown(errorsByRow, rowNumber, olmid, "designation", row.getDesignation(), masterData::isDesignation);
         checkDropdown(errorsByRow, rowNumber, olmid, "jobLevel", row.getJobLevel(), masterData::isJobLevel);
-        checkDropdown(errorsByRow, rowNumber, olmid, "officeLocation", row.getOfficeLocation(), masterData::isOfficeLocation);
-        checkDropdown(errorsByRow, rowNumber, olmid, "deviceVendorCapability", row.getDeviceVendorCapability(), masterData::isDeviceVendorCapability);
         checkDropdown(errorsByRow, rowNumber, olmid, "gender", row.getGender(), masterData::isGender);
 
         // Hierarchy chain: stop at the first broken link so one bad root cause

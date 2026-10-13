@@ -47,7 +47,7 @@ public class    AuthController extends BaseService {
 
     @PostMapping("/v1/signin")
     public ResponseEntity<?> signIn(@RequestBody UserCredentialsDto userCredentialsDto, HttpServletResponse response) {
-        System.out.println("Received olmId: " + userCredentialsDto.getOlmId());
+        LOGGER.info("Received olmId: {}", userCredentialsDto.getOlmId());
         try {
             LoginResponseDto loginResponse = authService.findPasswordByOlmId(
                     userCredentialsDto.getOlmId(),

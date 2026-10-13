@@ -46,6 +46,8 @@ public class BaseService {
 
     protected final Logger crqScheduleReschedule = LoggerFactory.getLogger("Schedule_Reschedule_Crq");
 
+    protected final Logger cfmCrqDetailsApi = LoggerFactory.getLogger("Cfm_Crq_Details_API");
+
 
 
 }

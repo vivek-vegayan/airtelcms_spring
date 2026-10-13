@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vegayan.airtelmanagement.cabmanager.dto.AddCrqToSessionRequest;
 import com.vegayan.airtelmanagement.cabmanager.dto.AddCrqToSessionResultDto;
 import com.vegayan.airtelmanagement.cabmanager.dto.AddCrqToSessionRowDto;
+import com.vegayan.airtelmanagement.cabmanager.dto.AddExternalCrqToSessionRequest;
 import com.vegayan.airtelmanagement.cabmanager.dto.CabAgendaRowDto;
 import com.vegayan.airtelmanagement.cabmanager.dto.CabPlanConflictDto;
 import com.vegayan.airtelmanagement.cabmanager.dto.CabPlanConflictRowDto;
@@ -134,6 +135,49 @@ public class CabSessionService extends BaseService {
 
         } catch (JsonProcessingException e) {
             LOGGER.error("Failed to convert CRQ list to JSON", e);
+            throw new BusinessException("Failed to prepare request.");
+        }
+    }
+
+    // CRQs raised outside the portal (bulk upload). Same result contract as
+    // addCrqsToSession: CRQs the session already carries come back skipped.
+    public AddCrqToSessionResultDto addExternalCrqsToSession(
+            String sessionId, AddExternalCrqToSessionRequest body, Long actorUserId) {
+
+        if (body.crqs() == null || body.crqs().isEmpty()) {
+            throw new BusinessException("Upload at least one CRQ to add.");
+        }
+
+        try {
+            String crqJson = objectMapper.writeValueAsString(body.crqs());
+
+            LOGGER.info(
+                    "call sp_add_external_crq_to_cab_session('{}','{}',{});",
+                    sessionId, crqJson, actorUserId
+            );
+
+            List<AddCrqToSessionRowDto> rows = databaseUtils.executeProcedureGetDataWithError(
+                    jdbcTemplateTwo,
+                    "CALL sp_add_external_crq_to_cab_session(?,?,?)",
+                    AddCrqToSessionRowDto.class,
+                    sessionId, crqJson, actorUserId
+            );
+
+            if (rows.isEmpty()) {
+                throw new BusinessException("Session not found: " + sessionId);
+            }
+
+            AddCrqToSessionRowDto row = rows.get(0);
+            return new AddCrqToSessionResultDto(
+                    row.getCabId() == null ? sessionId : row.getCabId(),
+                    row.getAddedCount() == null ? 0 : row.getAddedCount(),
+                    row.getSkippedCount() == null ? 0 : row.getSkippedCount(),
+                    parseCrqList(row.getAddedCrqList()),
+                    parseCrqList(row.getSkippedCrqList())
+            );
+
+        } catch (JsonProcessingException e) {
+            LOGGER.error("Failed to convert external CRQ list to JSON", e);
             throw new BusinessException("Failed to prepare request.");
         }
     }

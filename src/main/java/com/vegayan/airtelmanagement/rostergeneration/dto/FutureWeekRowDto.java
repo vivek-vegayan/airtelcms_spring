@@ -21,6 +21,10 @@ public class FutureWeekRowDto {
 
     private Integer isoWeek;
 
+    private String weekStartDate;
+
+    private String weekEndDate;
+
     private String W7D1;
     private String W7D2;
     private String W7D3;

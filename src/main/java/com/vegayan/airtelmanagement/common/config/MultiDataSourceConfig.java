@@ -2,6 +2,8 @@ package com.vegayan.airtelmanagement.common.config;
 
 import com.zaxxer.hikari.HikariDataSource;
 import jakarta.annotation.PreDestroy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -13,12 +15,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.logging.Logger;
 
 @Configuration
 public class MultiDataSourceConfig {
 
-    private static final Logger logger = Logger.getLogger(MultiDataSourceConfig.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(MultiDataSourceConfig.class);
 
     private final AppPropertiesConfig config;
     private HikariDataSource hikariDataSourceOne;
@@ -84,21 +85,21 @@ public class MultiDataSourceConfig {
     public void shutdown() {
         if (hikariDataSourceOne != null) {
             hikariDataSourceOne.close();
-            System.out.println("DataSourceOne shut down properly.");
+            logger.info("DataSourceOne shut down properly.");
         }
         if (hikariDataSourceTwo != null) {
             hikariDataSourceTwo.close();
-            System.out.println("DataSourceTwo shut down properly.");
+            logger.info("DataSourceTwo shut down properly.");
         }
     }
 
     private void validateConnection(HikariDataSource dataSource, String dataSourceName) {
         try (Connection connection = dataSource.getConnection()) {
             if (connection.isValid(5)) {
-                System.out.println(dataSourceName + " has been validated successfully!");
+                logger.info("{} has been validated successfully!", dataSourceName);
             }
         } catch (SQLException e) {
-            System.err.println("Error validating " + dataSourceName + ": " + e.getMessage());
+            logger.error("Error validating {}: {}", dataSourceName, e.getMessage());
             throw new RuntimeException("Failed to validate " + dataSourceName + ": " + e.getMessage(), e);
         }
     }

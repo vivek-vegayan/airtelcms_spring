@@ -7,6 +7,8 @@ import com.vegayan.airtelmanagement.slotVisibility.dto.TeamCapacityCountDto;
 import com.vegayan.airtelmanagement.slotVisibility.dto.TotalTeamCountDto;
 import com.vegayan.airtelmanagement.slotVisibility.dto.getTotalTeamCountDto;
 import com.vegayan.airtelmanagement.slotVisibility.service.TeamCapacityService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -17,6 +19,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/slotVisibility/teamCapacity")
 public class TeamCapacityController {
+
+    private static final Logger log = LoggerFactory.getLogger(TeamCapacityController.class);
 
     private final TeamCapacityService teamCapacityService;
 
@@ -29,10 +33,7 @@ public class TeamCapacityController {
             @RequestParam String toDate,
             @RequestParam String teamName,
             @RequestParam String shiftName) {
-        System.out.println(fromDate);
-        System.out.println(toDate);
-        System.out.println(teamName);
-        System.out.println(shiftName);
+        log.debug("teamCapacityCount fromDate={}, toDate={}, teamName={}, shiftName={}", fromDate, toDate, teamName, shiftName);
         return teamCapacityService.getTeamCapacityCount(
                 fromDate,
                 toDate,
@@ -46,9 +47,7 @@ public class TeamCapacityController {
             @RequestParam String   shiftDate,
             @RequestParam String teamName,
             @RequestParam String shiftName) {
-        System.out.println(shiftDate);
-        System.out.println(teamName);
-        System.out.println(shiftName);
+        log.debug("selectedSlotCount shiftDate={}, teamName={}, shiftName={}", shiftDate, teamName, shiftName);
         return teamCapacityService.getEngineerCapacity(
                  shiftDate,
                 teamName,
@@ -63,10 +62,7 @@ public class TeamCapacityController {
             @RequestParam String teamName,
             @RequestParam String shiftName) {
 
-        System.out.println("fromDate = " + fromDate);
-        System.out.println("toDate = " + toDate);
-        System.out.println("teamName = " + teamName);
-        System.out.println("shiftName = " + shiftName);
+        log.debug("totalTeamCount fromDate={}, toDate={}, teamName={}, shiftName={}", fromDate, toDate, teamName, shiftName);
 
         return teamCapacityService.getTotalTeamCount(
                 fromDate,
