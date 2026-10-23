@@ -70,7 +70,7 @@ public class AppPropertiesConfig {
     private String PYTHON_SERVER_URL;
 
     public AppPropertiesConfig() {
-        setCONFIG_FILE_PATH_WIN("C:\\vegayan\\simplus\\airtelcms-config.properties");
+        setCONFIG_FILE_PATH_WIN("C:\\vegayan\\simplus\\airtelchmbeta-config.properties");
         setCONFIG_FILE_PATH_LIN("/home/vegayan/simplus/config_airtel.properties");
         initializeConfigFilePath();
         loadProperties();
