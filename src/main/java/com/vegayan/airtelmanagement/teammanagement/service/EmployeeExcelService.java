@@ -107,7 +107,7 @@ public class EmployeeExcelService extends BaseService {
 
     public Workbook generateEmployeeTemplate(Long userId) {
         List<ExcelUserHierarchyDto>   hierarchy = teamOverviewService.fetchHierarchy();
-        CreateUserDropdownResponseDto dropdowns = teamOverviewService.getCreateUserDropdowns();
+        CreateUserDropdownResponseDto dropdowns = teamOverviewService.getCreateUserDropdowns(userId);
         return buildTemplate(hierarchy, dropdowns);
     }
 

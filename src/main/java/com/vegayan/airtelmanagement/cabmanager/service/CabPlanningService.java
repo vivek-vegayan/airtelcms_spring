@@ -18,16 +18,16 @@ public class CabPlanningService extends BaseService {
     @Autowired
     private ObjectMapper objectMapper;
 
-    public List<CabQueueRowDto> getCabQueue(String domainId,String subDomainId) {
+    public List<CabQueueRowDto> getCabQueue(String domainId, String subDomainId, String stage) {
 
-        String sql = "CALL sp_get_cab_queue(?,?)";
-        LOGGER.info("call sp_get_cab_queue('{}','{}');", domainId,subDomainId);
+        String sql = "CALL sp_get_cab_queue(?,?,?)";
+        LOGGER.info("call sp_get_cab_queue('{}','{}','{}');", domainId, subDomainId, stage);
 
         return databaseUtils.executeProcedureGetDataWithError(
                 jdbcTemplateTwo,
                 sql,
                 CabQueueRowDto.class,
-                domainId,subDomainId
+                domainId, subDomainId, stage
         );
     }
 

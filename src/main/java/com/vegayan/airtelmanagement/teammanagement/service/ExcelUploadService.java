@@ -63,7 +63,7 @@ public class ExcelUploadService {
     public List<ExcelRowResultDto> processSynchronously(Long actorUserId, List<EmployeeExcelRowDto> rows) {
         String correlationId = "SYNC-" + Instant.now().toEpochMilli();
 
-        ExcelMasterDataCache masterData = loadMasterData();
+        ExcelMasterDataCache masterData = loadMasterData(actorUserId);
         ExcelValidationResult validation = validationService.validate(rows, masterData);
 
         EXCEL_UPLOAD_LOG.info("Upload {} (synchronous) → total={}, valid={}, invalid={}",
@@ -110,7 +110,7 @@ public class ExcelUploadService {
             job.setStatus(UploadStatus.VALIDATING);
             job.setStage("Validating rows");
 
-            ExcelMasterDataCache masterData = loadMasterData();
+            ExcelMasterDataCache masterData = loadMasterData(actorUserId);
             ExcelValidationResult validation = validationService.validate(rows, masterData);
 
             int distinctInvalidRows = (int) validation.invalidRows().stream()
@@ -247,8 +247,8 @@ public class ExcelUploadService {
     // Shared helpers
     // ─────────────────────────────────────────────────────────────────────
 
-    private ExcelMasterDataCache loadMasterData() {
-        CreateUserDropdownResponseDto dropdowns = teamOverviewService.getCreateUserDropdowns();
+    private ExcelMasterDataCache loadMasterData(Long actorUserId) {
+        CreateUserDropdownResponseDto dropdowns = teamOverviewService.getCreateUserDropdowns(actorUserId);
         List<ExcelUserHierarchyDto> hierarchy = teamOverviewService.fetchHierarchy();
         return ExcelMasterDataCache.build(dropdowns, hierarchy, EmployeeExcelService.GENDER_OPTIONS);
     }

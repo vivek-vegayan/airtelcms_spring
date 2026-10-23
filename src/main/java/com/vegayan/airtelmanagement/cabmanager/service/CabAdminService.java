@@ -92,8 +92,7 @@ public class CabAdminService extends BaseService {
     public PageResponseDto<ServiceApprovalRuleDto> getServiceRules(Pageable pageable) {
         int offset = (int) pageable.getOffset();
         int limit = pageable.getPageSize();
-
-        LOGGER.info("Calling sp_get_cab_service_rules(offset={}, limit={})", offset, limit);
+        LOGGER.info("call sp_get_cab_service_rules('{}','{}');", offset, limit);
 
         String callQuery = "{CALL sp_get_cab_service_rules(?, ?)}";
 
@@ -113,14 +112,19 @@ public class CabAdminService extends BaseService {
     }
 
     public ApiResponse addServiceRules(ServiceApprovalRuleRequest request, Long actorUserId) {
+        String l1Time = blankToNull(request.getL1EscalationTime());
+        String l2Time = blankToNull(request.getL2EscalationTime());
+        String l3Time = blankToNull(request.getL3EscalationTime());
+
         LOGGER.info(
-                "call sp_crq_cab_upsert_escalation_config ({},'{}','{}','{}','{}','{}',{},{});",
+                "call sp_crq_cab_upsert_escalation_config ({},'{}','{}','{}','{}','{}','{}','{}','{}',{},{});",
                 request.getId(), request.getService(), request.getCircle(),
                 request.getL1(), request.getL2(), request.getL3(),
+                l1Time, l2Time, l3Time,
                 request.getActive(), actorUserId
         );
 
-        String sql = "CALL sp_crq_cab_upsert_escalation_config (?,?,?,?,?,?,?,?)";
+        String sql = "CALL sp_crq_cab_upsert_escalation_config (?,?,?,?,?,?,?,?,?,?,?)";
 
         EscalationUpsertResultDto result = databaseUtils.executeProcedureSingleResultWithError(
                 jdbcTemplateTwo,
@@ -132,6 +136,9 @@ public class CabAdminService extends BaseService {
                 request.getL1(),
                 request.getL2(),
                 request.getL3(),
+                l1Time,
+                l2Time,
+                l3Time,
                 request.getActive() == null ? Boolean.TRUE : request.getActive(),
                 actorUserId
         );
@@ -143,6 +150,10 @@ public class CabAdminService extends BaseService {
                 .message("Service escalation " + (wasUpdate ? "updated" : "added")
                         + " for " + request.getService() + " / " + request.getCircle() + ".")
                 .build();
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     public List<RejectionReasonDto> getRejectionReasons(String stage) {

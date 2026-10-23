@@ -49,7 +49,7 @@ public class TeamOverviewService extends BaseService {
     // Dropdowns  (also used by EmployeeExcelService)
     // ─────────────────────────────────────────────
 
-    public CreateUserDropdownResponseDto getCreateUserDropdowns() {
+    public CreateUserDropdownResponseDto getCreateUserDropdowns(Long actorUserId) {
 
         List<String> keys = List.of(
                 "employmentTypes",
@@ -61,11 +61,14 @@ public class TeamOverviewService extends BaseService {
                 "roleCode"
         );
 
+        LOGGER.info("call sp_create_user_dropdowns('{}');", actorUserId);
+
         Map<String, List<String>> result =
                 databaseUtils.executeMultiResultStringProcedure(
                         jdbcTemplateTwo,
                         "sp_create_user_dropdowns",
-                        keys
+                        keys,
+                        actorUserId
                 );
 
         CreateUserDropdownResponseDto response = new CreateUserDropdownResponseDto();

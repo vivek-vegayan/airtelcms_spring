@@ -234,9 +234,9 @@ public class PlanActivityExcelService extends BaseService {
                     .put(sd.getName(), sd);
         }
 
-        // sp_insert_plan_activity resolves the Assigned Team by Sub Domain NAME only
-        // (org-wide, LIMIT 1), so a name that appears under more than one Domain can't
-        // be mapped safely — count occurrences to reject those instead of guessing.
+        // sp_insert_plan_activity walks a full Team Path level by level, but resolves a
+        // bare Sub Domain name in the plan's own Domain first, then org-wide only if
+        // unique — count occurrences to reject ambiguous bare names instead of guessing.
         Map<String, Integer> subDomainNameCount = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         for (SubDomainDto sd : hierarchy.getSubDomains()) subDomainNameCount.merge(sd.getName(), 1, Integer::sum);
 
@@ -310,7 +310,9 @@ public class PlanActivityExcelService extends BaseService {
                 errors.add(err(rn, ref, "Activity Name", row.getActivityName(), "Must be 30 characters or fewer"));
             }
 
-            validatePhases(errors, row, subDomainNameCount, teamPaths);
+            Map<String, SubDomainDto> planDomainSubDomains = domain == null
+                    ? Map.of() : subDomainsByDomain.getOrDefault(domain.getId(), Map.of());
+            validatePhases(errors, row, subDomainNameCount, teamPaths, planDomainSubDomains);
 
             if (domain != null && subDomain != null && !isBlank(row.getActivityName())) {
                 checkDuplicateActivity(errors, actorUserId, rn, row, domain, subDomain,
@@ -322,7 +324,8 @@ public class PlanActivityExcelService extends BaseService {
     }
 
     private void validatePhases(List<PlanActivityValidationErrorDto> errors, PlanActivityExcelRowDto row,
-                                Map<String, Integer> subDomainNameCount, Set<String> teamPaths) {
+                                Map<String, Integer> subDomainNameCount, Set<String> teamPaths,
+                                Map<String, SubDomainDto> planDomainSubDomains) {
         String ref = row.getActivityRef();
         Set<String> seen = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
 
@@ -354,20 +357,23 @@ public class PlanActivityExcelService extends BaseService {
                 nonNegative(errors, rn, ref, phase + " Rollback Time", p.getRollbackTime());
             }
 
-            String teamName = resolveTeamName(row, p);
-            String teamValue = isBlank(p.getTeamPath()) ? row.getChmSubDomainName() : p.getTeamPath();
-            if (isBlank(teamName)) {
+            String teamValue = resolveTeam(row, p);
+            if (isBlank(teamValue)) {
                 errors.add(err(rn, ref, phase + " Assigned Team", teamValue, "Required"));
-            } else if (p.getTeamPath() != null && p.getTeamPath().contains(TEAM_PATH_SEPARATOR)
-                    && !teamPaths.contains(normalizePath(p.getTeamPath()))) {
-                errors.add(err(rn, ref, phase + " Assigned Team", teamValue, "Invalid Team — path not found"));
-            } else {
-                int count = subDomainNameCount.getOrDefault(teamName, 0);
+            } else if (teamValue.contains(TEAM_PATH_SEPARATOR)) {
+                // A full path names exactly one team; the procedure walks it level by level.
+                if (!teamPaths.contains(teamValue)) {
+                    errors.add(err(rn, ref, phase + " Assigned Team", teamValue, "Invalid Team — path not found"));
+                }
+            } else if (!planDomainSubDomains.containsKey(teamValue)) {
+                // Bare name outside the plan's own Domain: the procedure needs a unique match.
+                int count = subDomainNameCount.getOrDefault(teamValue, 0);
                 if (count == 0) {
                     errors.add(err(rn, ref, phase + " Assigned Team", teamValue, "Invalid Team — not found"));
                 } else if (count > 1) {
                     errors.add(err(rn, ref, phase + " Assigned Team", teamValue,
-                            "Ambiguous Team — Sub Domain '" + teamName + "' exists under more than one Domain"));
+                            "Ambiguous Team — Sub Domain '" + teamValue
+                                    + "' exists under more than one Domain; use the full Team Path"));
                 }
             }
         }
@@ -379,12 +385,12 @@ public class PlanActivityExcelService extends BaseService {
         }
     }
 
-    /** The procedure takes a Sub Domain name: last segment of the Team Path, or the
-     *  activity's own Sub Domain when the Team column is blank. */
-    private String resolveTeamName(PlanActivityExcelRowDto row, PlanActivityExcelPhaseDto p) {
+    /** The value the procedure receives as p_assigned_to_team: the normalised full Team Path,
+     *  a bare Sub Domain name, or the activity's own Sub Domain when the Team column is blank. */
+    private String resolveTeam(PlanActivityExcelRowDto row, PlanActivityExcelPhaseDto p) {
         if (isBlank(p.getTeamPath())) return safe(row.getChmSubDomainName());
-        String[] parts = p.getTeamPath().split(TEAM_PATH_SEPARATOR);
-        return parts[parts.length - 1].trim();
+        String team = p.getTeamPath().trim();
+        return team.contains(TEAM_PATH_SEPARATOR) ? normalizePath(team) : team;
     }
 
     private List<String> buildTeamPaths(OrgHierarchyResponse hierarchy) {
@@ -557,7 +563,7 @@ public class PlanActivityExcelService extends BaseService {
                 phase.setPhase(phaseName); // canonical spelling for the procedure's CASE
                 try {
                     Object[] params = PlanActivityExcelMapper.toSqlParams(
-                            actorUserId, row, phase, resolveTeamName(row, phase));
+                            actorUserId, row, phase, resolveTeam(row, phase));
                     LOGGER.info("Row {} -> {}", phase.getRowNumber(),
                             CommonService.formatProcedureCall("sp_insert_plan_activity", params));
 

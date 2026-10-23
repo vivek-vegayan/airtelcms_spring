@@ -29,20 +29,21 @@ public class CabCrqService extends BaseService {
 
     // ── ALL CRQs ────────────────────────────────────────────────────────────
 
-    public List<CrqDto> getAllCrqs(String stage, String domain, String circle, String impact, String serviceCode, String search) {
+    public List<CrqDto> getAllCrqs(String domain, String circle, String impact, String serviceCode,
+                                   String search, String serviceApprovalStatus) {
 
         String sql = "CALL sp_get_cab_crqs(?,?,?,?,?,?)";
 
         LOGGER.info(
                 "call sp_get_cab_crqs('{}','{}','{}','{}','{}','{}');",
-                stage, domain, circle, impact, serviceCode, search
+                domain, circle, impact, serviceCode, search, serviceApprovalStatus
         );
 
         return databaseUtils.executeProcedureGetDataWithError(
                 jdbcTemplateTwo,
                 sql,
                 CrqDto.class,
-                stage, domain, circle, impact, serviceCode, search
+                domain, circle, impact, serviceCode, search, serviceApprovalStatus
         );
     }
 
