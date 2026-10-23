@@ -12,5 +12,10 @@ public class ServiceApprovalRuleRequest {
     private String l2;      // L2_Olm_Id — optional
     private String l3;      // L3_Olm_Id — optional
 
+    // L1/L2/L3_Escalation_Time — "HH:mm" or "HH:mm:ss"; blank → NULL
+    private String l1EscalationTime;
+    private String l2EscalationTime;
+    private String l3EscalationTime;
+
     private Boolean active; // Is_Active
 }

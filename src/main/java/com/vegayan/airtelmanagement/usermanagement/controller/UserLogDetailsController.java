@@ -6,6 +6,8 @@ import com.vegayan.airtelmanagement.usermanagement.dto.LoginTokenResponseDto;
 import com.vegayan.airtelmanagement.usermanagement.dto.UserLogDetailsDto;
 import com.vegayan.airtelmanagement.usermanagement.service.UserLogDetailsService;
 import lombok.AllArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -19,6 +21,8 @@ import java.util.List;
 @RequestMapping("/usermanagement")
 @AllArgsConstructor
 public class UserLogDetailsController {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(UserLogDetailsController.class);
 
     private final UserLogDetailsService userLogDetailsService;
 
@@ -35,8 +39,8 @@ public class UserLogDetailsController {
     public ResponseEntity<LoginTokenResponseDto> signIn(
             @RequestBody UserCredentialsDto userCredentialsDto) {
 
-        System.out.println("Username = " + userCredentialsDto.getUsername());
-        System.out.println("Password = " + userCredentialsDto.getPassword());
+        // Never log the password — anyone with access to the logs could read it.
+        LOGGER.info("Access token requested for username: {}", userCredentialsDto.getUsername());
 
         LoginTokenResponseDto response =
                 userLogDetailsService.getAccessToken(
@@ -45,9 +49,11 @@ public class UserLogDetailsController {
                 );
 
         if ("Success".equalsIgnoreCase(response.getStatus())) {
+            LOGGER.info("Access token issued for username: {}", userCredentialsDto.getUsername());
             return ResponseEntity.ok(response);
         }
 
+        LOGGER.warn("Access token request rejected for username: {}", userCredentialsDto.getUsername());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 

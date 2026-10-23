@@ -23,9 +23,10 @@ public class CabPlanningController {
     @GetMapping("/queue")
     public List<CabQueueRowDto> getCabQueue(
             @RequestParam String domainId,
-            @RequestParam String subDomainId
+            @RequestParam String subDomainId,
+            @RequestParam(required = false, defaultValue = "All") String stage
     ) {
-        return cabPlanningService.getCabQueue(domainId,subDomainId);
+        return cabPlanningService.getCabQueue(domainId, subDomainId, stage);
     }
 
     @GetMapping("/dates")

@@ -569,6 +569,49 @@ public class CrqWorkflowController {
         }
     }
 
+    @Auditable(module = AuditModule.SCHEDULER,
+               subModule = AuditModule.SUB_MOP_VALIDATION,
+               action = AuditAction.UPLOAD,
+               remark = "Uploaded a corrected MOP version",
+               keyParams = {"crqNo"})
+    @PostMapping(value = "/mopvalidate/{crqNo}/versions", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadCorrectedMopVersion(
+            @PathVariable String crqNo,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "note", required = false) String note,
+            Authentication authentication) {
+        try {
+            Long userId = Long.valueOf(authentication.getName());
+            return ResponseEntity.ok(crqWorkflowService.uploadCorrectedMopVersion(
+                    crqNo, file.getBytes(), file.getOriginalFilename(), note, userId));
+        } catch (BusinessException e) {
+            return ResponseEntity.badRequest().body(new ApiResponse("Error", e.getMessage()));
+        } catch (IOException e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse("Error", "Could not read the uploaded file."));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse("Error", e.getMessage()));
+        }
+    }
+
+    @Auditable(module = AuditModule.SCHEDULER,
+               subModule = AuditModule.SUB_MOP_VALIDATION,
+               action = AuditAction.DOWNLOAD,
+               remark = "Downloaded a MOP version document",
+               keyParams = {"crqNo", "versionId"})
+    @GetMapping("/mopvalidate/{crqNo}/versions/{versionId}/document")
+    public ResponseEntity<?> getMopVersionDocument(
+            @PathVariable String crqNo,
+            @PathVariable Long versionId) {
+        try {
+            return mopDocumentResponse(crqNo, crqWorkflowService.getMopVersionDocument(crqNo, versionId));
+        } catch (BusinessException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse("Error", e.getMessage()));
+        }
+    }
+
     public record MopFindingRequest(Long versionId, Integer pageNo, String stepRef, String description) {}
 
     public record MopFindingStateRequest(String state) {}
@@ -611,36 +654,23 @@ public class CrqWorkflowController {
     @GetMapping("/mopcreate/{crqNo}/pdf")
     public ResponseEntity<?> getMopCreatePdf(@PathVariable String crqNo) {
         try {
-            CrqWorkflowService.MopDocument document = crqWorkflowService.getMopCreateDocument(crqNo);
-            byte[] bytes = document.bytes();
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(mopMediaType(document.kind())))
-                    .contentLength(bytes.length)
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "inline; filename=\"" + crqNo + "-mop." + mopExtension(document.kind()) + "\"")
-                    .header("X-Mop-Document-Type", document.kind())
-                    .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "X-Mop-Document-Type")
-                    .body(bytes);
+            return mopDocumentResponse(crqNo, crqWorkflowService.getMopCreateDocument(crqNo));
         } catch (BusinessException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse("Error", e.getMessage()));
         }
     }
 
-    private static String mopMediaType(String kind) {
-        return switch (kind) {
-            case "XLSX" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-            case "XLS" -> "application/vnd.ms-excel";
-            default -> MediaType.APPLICATION_PDF_VALUE;
-        };
-    }
-
-    private static String mopExtension(String kind) {
-        return switch (kind) {
-            case "XLSX" -> "xlsx";
-            case "XLS" -> "xls";
-            default -> "pdf";
-        };
+    private static ResponseEntity<byte[]> mopDocumentResponse(String crqNo, CrqWorkflowService.MopDocument document) {
+        byte[] bytes = document.bytes();
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(CrqWorkflowService.mopMimeType(document.kind())))
+                .contentLength(bytes.length)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + crqNo + "-mop." + CrqWorkflowService.mopExtension(document.kind()) + "\"")
+                .header("X-Mop-Document-Type", document.kind())
+                .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "X-Mop-Document-Type")
+                .body(bytes);
     }
 
 

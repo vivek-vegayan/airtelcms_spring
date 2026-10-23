@@ -370,7 +370,8 @@ public class DatabaseUtils {
     public Map<String, List<String>> executeMultiResultStringProcedure(
             JdbcTemplate jdbcTemplate,
             String procedureName,
-            List<String> resultKeys
+            List<String> resultKeys,
+            Object... args
     ) {
 
         String catalogName;
@@ -390,7 +391,7 @@ public class DatabaseUtils {
                     (rs, rowNum) -> rs.getString(1));
         }
 
-        Map<String, Object> rawResult = jdbcCall.execute();
+        Map<String, Object> rawResult = jdbcCall.execute(args);
 
         Map<String, List<String>> finalResult = new HashMap<>();
 

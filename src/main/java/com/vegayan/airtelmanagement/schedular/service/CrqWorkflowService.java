@@ -24,6 +24,8 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -1533,43 +1535,20 @@ public class CrqWorkflowService extends BaseService {
 
     public MopCreateDetailsDto getMopDetailsByCrqNo(String crqNo) {
 
-        List<MopCreateDetailsDto> rows = jdbcTemplateTwo.query(
-                "SELECT m.crq_no AS crq_no, "
-                        + "       p.mop_id, p.title, p.window_start, p.window_end, "
-                        + "       p.region, p.vendor, p.status AS mop_status "
-                        + "FROM CRQ_MASTER_TBL m "
-                        + "LEFT JOIN mop p ON p.crq_number = m.crq_no "
-                        + "WHERE m.crq_no = ? "
-                        + "LIMIT 1",
-                (rs, rowNum) -> {
-                    MopCreateDetailsDto dto = new MopCreateDetailsDto();
+        LOGGER.info("call sp_get_crq_mop_details('{}');", crqNo);
 
-                    dto.setCrqNo(rs.getString("crq_no"));
+        MopCreateDetailsDto details = databaseUtils.executeProcedureSingleResultWithError(
+                jdbcTemplateTwo,
+                "CALL sp_get_crq_mop_details(?)",
+                MopCreateDetailsDto.class,
+                crqNo);
 
-                    long mopId = rs.getLong("mop_id");
-                    boolean exists = !rs.wasNull();
-                    dto.setMopExists(exists);
-                    dto.setMopId(exists ? mopId : null);
-
-                    if (exists) {
-                        dto.setTitle(rs.getString("title"));
-                        dto.setWindowStart(toLocalDateTime(rs.getTimestamp("window_start")));
-                        dto.setWindowEnd(toLocalDateTime(rs.getTimestamp("window_end")));
-                        dto.setRegion(rs.getString("region"));
-                        dto.setVendor(rs.getString("vendor"));
-                        dto.setMopStatus(rs.getString("mop_status"));
-                    }
-
-                    return dto;
-                },
-                crqNo
-        );
-
-        if (rows.isEmpty()) {
+        if (details == null) {
             return null;
         }
 
-        MopCreateDetailsDto details = rows.get(0);
+        // The LEFT JOIN leaves mop_id NULL when MOP Create has not run yet.
+        details.setMopExists(details.getMopId() != null);
 
         // The uploaded document lives in CRQ_PDF_TBL, which is keyed on the CRQ
         // and independent of the `mop` record - a document can be attached
@@ -1639,22 +1618,7 @@ public class CrqWorkflowService extends BaseService {
     }
 
     public ApiResponse storeMopCreateDocument(String crqNo, byte[] bytes, String originalFilename) {
-        if (bytes == null || bytes.length == 0) {
-            throw new BusinessException("The uploaded MOP document is empty.");
-        }
-        if (bytes.length > MOP_PDF_MAX_BYTES) {
-            throw new BusinessException(
-                    "The MOP document is " + (bytes.length / (1024 * 1024))
-                            + " MB. The limit is " + (MOP_PDF_MAX_BYTES / (1024 * 1024)) + " MB.");
-        }
-        // Checked against the content, not the extension - a renamed file
-        // would otherwise be stored and then fail to open for whoever
-        // reviews it, long after the upload that could have caught it.
-        if (detectDocumentKind(bytes) == null) {
-            throw new BusinessException(
-                    "\"" + originalFilename + "\" is not a PDF or Excel workbook. "
-                            + "Upload the MOP as a .pdf, .xlsx or .xls file.");
-        }
+        requireMopDocumentKind(bytes, originalFilename);
 
         String encoded = Base64.getEncoder().encodeToString(bytes);
         return databaseUtils.executeProcedureForMessageV1(
@@ -1673,13 +1637,79 @@ public class CrqWorkflowService extends BaseService {
         return document;
     }
 
+    /**
+     * Size and format checks shared by every MOP upload. Returns the detected
+     * kind ("PDF", "XLSX", "XLS").
+     */
+    private static String requireMopDocumentKind(byte[] bytes, String originalFilename) {
+        if (bytes == null || bytes.length == 0) {
+            throw new BusinessException("The uploaded MOP document is empty.");
+        }
+        if (bytes.length > MOP_PDF_MAX_BYTES) {
+            throw new BusinessException(
+                    "The MOP document is " + (bytes.length / (1024 * 1024))
+                            + " MB. The limit is " + (MOP_PDF_MAX_BYTES / (1024 * 1024)) + " MB.");
+        }
+        // Checked against the content, not the extension - a renamed file
+        // would otherwise be stored and then fail to open for whoever
+        // reviews it, long after the upload that could have caught it.
+        String kind = detectDocumentKind(bytes);
+        if (kind == null) {
+            throw new BusinessException(
+                    "\"" + originalFilename + "\" is not a PDF or Excel workbook. "
+                            + "Upload the MOP as a .pdf, .xlsx or .xls file.");
+        }
+        return kind;
+    }
+
+    public static String mopMimeType(String kind) {
+        return switch (kind) {
+            case "XLSX" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            case "XLS" -> "application/vnd.ms-excel";
+            default -> "application/pdf";
+        };
+    }
+
+    public static String mopExtension(String kind) {
+        return switch (kind) {
+            case "XLSX" -> "xlsx";
+            case "XLS" -> "xls";
+            default -> "pdf";
+        };
+    }
+
     private MopDocument findMopCreateDocument(String crqNo) {
         List<byte[]> rows = jdbcTemplateTwo.query(
                 "CALL SP_GET_CRQ_MOP_CREATE_PDF(?)",
                 (rs, rowNum) -> rs.getBytes("PDF_DATA"),
                 crqNo
         );
-        byte[] stored = rows.isEmpty() ? null : rows.get(0);
+        return toMopDocument(rows.isEmpty() ? null : rows.get(0));
+    }
+
+    /**
+     * The document a replaced version was reviewed against, archived by
+     * sp_mop_version_add. Null for the current version - that one is still in
+     * CRQ_PDF_TBL.
+     */
+    private MopDocument findArchivedVersionDocument(Long versionId) {
+        List<byte[]> rows = jdbcTemplateTwo.query(
+                "CALL sp_get_mop_version_document(?)",
+                (rs, rowNum) -> rs.getBytes("doc_data"),
+                versionId
+        );
+        return toMopDocument(rows.isEmpty() ? null : rows.get(0));
+    }
+
+    /** The current version's document lives in CRQ_PDF_TBL; older ones in the archive. */
+    private MopDocument findVersionDocument(String crqNo, Long versionId, Long currentVersionId) {
+        if (currentVersionId == null || currentVersionId.equals(versionId)) {
+            return findMopCreateDocument(crqNo);
+        }
+        return findArchivedVersionDocument(versionId);
+    }
+
+    private static MopDocument toMopDocument(byte[] stored) {
         if (stored == null || stored.length == 0) {
             return null;
         }
@@ -1731,12 +1761,8 @@ public class CrqWorkflowService extends BaseService {
 
     public MopValidateDetailsDto getMopValidateDetails(String crqNo, Long actorUserId) {
 
-        List<Map<String, Object>> mopRows = jdbcTemplateTwo.queryForList(
-                "SELECT m.crq_no AS crq_no, p.mop_id, p.status AS mop_status "
-                        + "FROM CRQ_MASTER_TBL m "
-                        + "LEFT JOIN mop p ON p.crq_number = m.crq_no "
-                        + "WHERE m.crq_no = ? LIMIT 1",
-                crqNo);
+        List<Map<String, Object>> mopRows = databaseUtils.executeProcedureLastResultSet(
+                jdbcTemplateTwo, "CALL sp_fetch_crq_mop_status(?)", crqNo);
 
         if (mopRows.isEmpty()) {
             return null;
@@ -1781,15 +1807,8 @@ public class CrqWorkflowService extends BaseService {
 
     private void applyVersionDetail(MopValidateDetailsDto dto, Long versionId) {
 
-        List<Map<String, Object>> rows = jdbcTemplateTwo.queryForList(
-                "SELECT v.version_no, v.status, v.note, v.page_count, v.uploaded_at, "
-                        + "       v.uploaded_by, v.decided_at, v.decided_by, v.decision_note, "
-                        + "       f.original_name, f.mime_type, f.size_bytes "
-                        + "FROM mop_version v "
-                        + "LEFT JOIN mop_file f "
-                        + "       ON f.version_id = v.version_id AND f.file_kind = 'mop_document' "
-                        + "WHERE v.version_id = ? LIMIT 1",
-                versionId);
+        List<Map<String, Object>> rows = databaseUtils.executeProcedureLastResultSet(
+                jdbcTemplateTwo, "CALL sp_get_mop_pdf_dtls_by_Versionid(?)", versionId);
 
         if (rows.isEmpty()) {
             return;
@@ -1812,11 +1831,8 @@ public class CrqWorkflowService extends BaseService {
 
     private void applyOpenReview(MopValidateDetailsDto dto, Long versionId, String actorOlmId) {
 
-        List<Map<String, Object>> rows = jdbcTemplateTwo.queryForList(
-                "SELECT review_id, reviewer_id, started_at FROM mop_review "
-                        + "WHERE version_id = ? AND outcome = 'open' "
-                        + "ORDER BY review_id DESC LIMIT 1",
-                versionId);
+        List<Map<String, Object>> rows = databaseUtils.executeProcedureLastResultSet(
+                jdbcTemplateTwo, "CALL sp_get_open_mop_review(?)", versionId);
 
         if (rows.isEmpty()) {
             return;
@@ -1849,6 +1865,10 @@ public class CrqWorkflowService extends BaseService {
             throw new BusinessException(current.isReviewOwnedByMe()
                     ? "You already have this MOP version open for review."
                     : "This MOP version is already under review by " + current.getReviewerId() + ".");
+        }
+        if ("rejected".equals(current.getVersionStatus())) {
+            throw new BusinessException("v" + current.getVersionNo()
+                    + " has been rejected. Upload a corrected version to review it.");
         }
 
         String reviewerId = resolveOlmId(actorUserId);
@@ -1911,14 +1931,8 @@ public class CrqWorkflowService extends BaseService {
 
     public MopReviewWorkspaceDto getMopReviewWorkspace(String crqNo, Long versionId, Long actorUserId) {
 
-        List<Map<String, Object>> mopRows = jdbcTemplateTwo.queryForList(
-                "SELECT m.crq_no AS crq_no, p.mop_id, p.title, p.status AS mop_status, "
-                        + "       p.window_start, p.window_end, p.region, p.vendor, "
-                        + "       p.current_version_id "
-                        + "FROM CRQ_MASTER_TBL m "
-                        + "LEFT JOIN mop p ON p.crq_number = m.crq_no "
-                        + "WHERE m.crq_no = ? LIMIT 1",
-                crqNo);
+        List<Map<String, Object>> mopRows = databaseUtils.executeProcedureLastResultSet(
+                jdbcTemplateTwo, "CALL sp_get_crq_mop_header_with_current_version(?)", crqNo);
 
         if (mopRows.isEmpty()) {
             return null;
@@ -1991,9 +2005,10 @@ public class CrqWorkflowService extends BaseService {
 
         applyVersionFile(dto, viewed.getVersionId());
 
-        // The document itself lives in CRQ_PDF_TBL, keyed on the CRQ - not on
-        // the version - so it is read once for the CRQ, not per version.
-        MopDocument document = findMopCreateDocument(crqNo);
+        // The current version's document lives in CRQ_PDF_TBL, keyed on the
+        // CRQ; a replaced version's was archived when the corrected one was
+        // uploaded.
+        MopDocument document = findVersionDocument(crqNo, viewed.getVersionId(), currentVersionId);
         dto.setDocumentAttached(document != null);
         dto.setDocumentType(document == null ? null : document.kind());
 
@@ -2006,7 +2021,11 @@ public class CrqWorkflowService extends BaseService {
 
         boolean viewingOld = !viewed.getVersionId().equals(latest.getVersionId());
         dto.setViewingOld(viewingOld);
-        dto.setCanEdit(!viewingOld && !"validated".equals(dto.getMopStatus()));
+        // A rejected version is decided - the way forward is a corrected
+        // version, not more findings or a validate on the rejected one.
+        dto.setCanEdit(!viewingOld
+                && !"validated".equals(dto.getMopStatus())
+                && !"rejected".equals(viewed.getStatus()));
 
         applyOpenReviewTo(dto, viewed.getVersionId(), actorOlmId);
 
@@ -2014,14 +2033,8 @@ public class CrqWorkflowService extends BaseService {
     }
 
     private List<MopVersionSummaryDto> readVersions(Long mopId) {
-        return jdbcTemplateTwo.queryForList(
-                        "SELECT v.version_id, v.version_no, v.status, v.note, v.uploaded_by, "
-                                + "       v.uploaded_at, v.decided_by, v.decided_at, v.decision_note, "
-                                + "       (SELECT COUNT(*) FROM mop_finding f "
-                                + "         WHERE f.version_id = v.version_id AND f.state = 'open') AS open_findings "
-                                + "FROM mop_version v WHERE v.mop_id = ? "
-                                + "ORDER BY v.version_no DESC, v.version_id DESC",
-                        mopId)
+        return databaseUtils.executeProcedureLastResultSet(
+                        jdbcTemplateTwo, "CALL sp_get_mop_version_history_with_open_findings(?)", mopId)
                 .stream()
                 .map(row -> {
                     MopVersionSummaryDto v = new MopVersionSummaryDto();
@@ -2042,58 +2055,26 @@ public class CrqWorkflowService extends BaseService {
     }
 
     private List<MopFindingDto> readFindings(Long versionId) {
-        return jdbcTemplateTwo.queryForList(
-                        "SELECT finding_id, finding_ref, version_id, page_no, step_ref, "
-                                + "       description, state, raised_by, raised_at, resolved_at "
-                                + "FROM mop_finding WHERE version_id = ? AND state <> 'withdrawn' "
-                                + "ORDER BY finding_id",
-                        versionId)
-                .stream()
-                .map(row -> {
-                    MopFindingDto f = new MopFindingDto();
-                    f.setFindingId(asLong(row.get("finding_id")));
-                    f.setFindingRef(asString(row.get("finding_ref")));
-                    f.setVersionId(asLong(row.get("version_id")));
-                    f.setPageNo(asInteger(row.get("page_no")));
-                    f.setStepRef(asString(row.get("step_ref")));
-                    f.setDescription(asString(row.get("description")));
-                    f.setState(asString(row.get("state")));
-                    f.setRaisedBy(asString(row.get("raised_by")));
-                    f.setRaisedAt(asLocalDateTime(row.get("raised_at")));
-                    f.setResolvedAt(asLocalDateTime(row.get("resolved_at")));
-                    return f;
-                })
-                .toList();
+        LOGGER.info("call sp_get_active_mop_findings_by_version('{}');", versionId);
+        return databaseUtils.executeProcedureGetDataWithError(
+                jdbcTemplateTwo,
+                "CALL sp_get_active_mop_findings_by_version(?)",
+                MopFindingDto.class,
+                versionId);
     }
 
     private List<MopAuditEntryDto> readAudit(Long mopId) {
-        return jdbcTemplateTwo.queryForList(
-                        "SELECT audit_id, version_id, actor_id, event_type, detail, created_at "
-                                + "FROM mop_audit WHERE mop_id = ? "
-                                + "ORDER BY audit_id DESC LIMIT 200",
-                        mopId)
-                .stream()
-                .map(row -> {
-                    MopAuditEntryDto a = new MopAuditEntryDto();
-                    a.setAuditId(asLong(row.get("audit_id")));
-                    a.setVersionId(asLong(row.get("version_id")));
-                    a.setActorId(asString(row.get("actor_id")));
-                    a.setEventType(asString(row.get("event_type")));
-                    a.setDetail(asString(row.get("detail")));
-                    a.setCreatedAt(asLocalDateTime(row.get("created_at")));
-                    return a;
-                })
-                .toList();
+        LOGGER.info("call sp_get_mop_audit_trail_latest('{}');", mopId);
+        return databaseUtils.executeProcedureGetDataWithError(
+                jdbcTemplateTwo,
+                "CALL sp_get_mop_audit_trail_latest(?)",
+                MopAuditEntryDto.class,
+                mopId);
     }
 
     private void applyVersionFile(MopReviewWorkspaceDto dto, Long versionId) {
-        List<Map<String, Object>> rows = jdbcTemplateTwo.queryForList(
-                "SELECT v.page_count, f.original_name "
-                        + "FROM mop_version v "
-                        + "LEFT JOIN mop_file f "
-                        + "       ON f.version_id = v.version_id AND f.file_kind = 'mop_document' "
-                        + "WHERE v.version_id = ? LIMIT 1",
-                versionId);
+        List<Map<String, Object>> rows = databaseUtils.executeProcedureLastResultSet(
+                jdbcTemplateTwo, "CALL sp_get_mop_pdf_dtls_by_Versionid(?)", versionId);
         if (rows.isEmpty()) {
             return;
         }
@@ -2102,11 +2083,8 @@ public class CrqWorkflowService extends BaseService {
     }
 
     private void applyOpenReviewTo(MopReviewWorkspaceDto dto, Long versionId, String actorOlmId) {
-        List<Map<String, Object>> rows = jdbcTemplateTwo.queryForList(
-                "SELECT review_id, reviewer_id, started_at FROM mop_review "
-                        + "WHERE version_id = ? AND outcome = 'open' "
-                        + "ORDER BY review_id DESC LIMIT 1",
-                versionId);
+        List<Map<String, Object>> rows = databaseUtils.executeProcedureLastResultSet(
+                jdbcTemplateTwo, "CALL sp_get_open_mop_review(?)", versionId);
         if (rows.isEmpty()) {
             return;
         }
@@ -2233,6 +2211,94 @@ public class CrqWorkflowService extends BaseService {
         return getMopReviewWorkspace(crqNo, workspace.getVersionId(), actorUserId);
     }
 
+    private static final int MOP_VERSION_NOTE_MAX = 500;
+
+    /**
+     * Uploads a corrected file as the next version after the current one was
+     * rejected. sp_mop_version_add archives the rejected version's document,
+     * inserts version N+1 as pending_validation and makes it current.
+     */
+    public MopValidateDetailsDto uploadCorrectedMopVersion(String crqNo, byte[] bytes, String originalFilename,
+                                                           String note, Long actorUserId) {
+
+        String kind = requireMopDocumentKind(bytes, originalFilename);
+
+        String trimmedNote = note == null ? null : note.trim();
+        if (trimmedNote != null && trimmedNote.length() > MOP_VERSION_NOTE_MAX) {
+            throw new BusinessException("The version note is limited to " + MOP_VERSION_NOTE_MAX + " characters.");
+        }
+
+        MopValidateDetailsDto current = getMopValidateDetails(crqNo, actorUserId);
+        if (current == null) {
+            throw new BusinessException("That CRQ does not exist.");
+        }
+        if (!current.isMopExists() || current.getVersionId() == null) {
+            throw new BusinessException("No MOP has been created for " + crqNo + " yet.");
+        }
+        if (!"rejected".equals(current.getVersionStatus())) {
+            throw new BusinessException("v" + current.getVersionNo() + " is " + current.getVersionStatus()
+                    + ". A corrected version can only replace a rejected one.");
+        }
+
+        String uploadedBy = requireOlmId(actorUserId);
+
+        String fileName = originalFilename == null || originalFilename.isBlank()
+                ? crqNo + "-mop." + mopExtension(kind)
+                : originalFilename.trim();
+
+        String sha256;
+        try {
+            sha256 = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+        } catch (NoSuchAlgorithmException e) {
+            sha256 = null;
+        }
+
+        // The document itself is left out of the log line - it is the whole
+        // file as Base64.
+        LOGGER.info("call sp_mop_version_add('{}', <{} bytes>, '{}', '{}', {}, '{}', '{}', '{}');",
+                crqNo, bytes.length, fileName, mopMimeType(kind), bytes.length, sha256, trimmedNote, uploadedBy);
+        try {
+            jdbcTemplateTwo.update("CALL sp_mop_version_add(?, ?, ?, ?, ?, ?, ?, ?)",
+                    crqNo,
+                    Base64.getEncoder().encodeToString(bytes),
+                    fileName,
+                    mopMimeType(kind),
+                    (long) bytes.length,
+                    sha256,
+                    trimmedNote,
+                    uploadedBy);
+        } catch (DataAccessException e) {
+            throw new BusinessException(mopSignalMessage(e, "The corrected version could not be uploaded."));
+        }
+
+        return getMopValidateDetails(crqNo, actorUserId);
+    }
+
+    /** The document of one version of the CRQ's MOP - current or replaced. */
+    public MopDocument getMopVersionDocument(String crqNo, Long versionId) {
+
+        List<Map<String, Object>> mopRows = databaseUtils.executeProcedureLastResultSet(
+                jdbcTemplateTwo, "CALL sp_get_crq_mop_header_with_current_version(?)", crqNo);
+
+        Long mopId = mopRows.isEmpty() ? null : asLong(mopRows.get(0).get("mop_id"));
+        if (mopId == null) {
+            throw new BusinessException("No MOP has been created for " + crqNo + " yet.");
+        }
+
+        boolean belongs = readVersions(mopId).stream()
+                .anyMatch(v -> v.getVersionId().equals(versionId));
+        if (!belongs) {
+            throw new BusinessException("That MOP version does not belong to " + crqNo + ".");
+        }
+
+        MopDocument document = findVersionDocument(
+                crqNo, versionId, asLong(mopRows.get(0).get("current_version_id")));
+        if (document == null) {
+            throw new BusinessException("No document is stored for that MOP version.");
+        }
+        return document;
+    }
+
     private MopReviewWorkspaceDto requireEditableWorkspace(String crqNo, Long versionId, Long actorUserId) {
 
         MopReviewWorkspaceDto workspace = getMopReviewWorkspace(crqNo, versionId, actorUserId);
@@ -2249,6 +2315,10 @@ public class CrqWorkflowService extends BaseService {
         if (workspace.isViewingOld()) {
             throw new BusinessException(
                     "v" + workspace.getVersionNo() + " has been superseded and is read-only.");
+        }
+        if ("rejected".equals(workspace.getVersionStatus())) {
+            throw new BusinessException("v" + workspace.getVersionNo()
+                    + " has been rejected. Upload a corrected version to continue.");
         }
         if (!workspace.isCanEdit()) {
             throw new BusinessException("This MOP has already been validated and is locked.");
@@ -2295,6 +2365,18 @@ public class CrqWorkflowService extends BaseService {
             }
             if (message.contains("Version not found")) {
                 return "That MOP version no longer exists.";
+            }
+            if (message.contains("Only a rejected version can be replaced")) {
+                return "Only a rejected version can be replaced with a corrected one.";
+            }
+            if (message.contains("MOP not found for this CRQ")) {
+                return "No MOP has been created for this CRQ yet.";
+            }
+            if (message.contains("MOP has no current version")) {
+                return "This MOP has no current version to replace.";
+            }
+            if (message.contains("MOP document is required")) {
+                return "The uploaded MOP document is empty.";
             }
         }
         return fallback;

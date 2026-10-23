@@ -28,10 +28,6 @@ public final class PublicEndpoints {
     public static final String[] PATTERNS = {
             "/test/**",
             "/auth/v1/signin",
-            // Password-verified takeover of one's own stranded session. It has
-            // to be reachable without a token (the caller can't get one while
-            // the old session holds the slot) but it re-checks the account
-            // password before ending anything - see AuthController.
             "/auth/v1/session/terminate",
             "/actuator/**",
             "/users/signup",

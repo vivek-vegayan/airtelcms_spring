@@ -5,6 +5,8 @@ import lombok.Data;
 @Data
 public class CabQueueRowDto {
     private String crqNo;
+    private String currentStage;
+    private String currentStatus;
     private String impact;
     private String circle;
     private String domain;

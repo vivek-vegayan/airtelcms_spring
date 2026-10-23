@@ -44,13 +44,13 @@ public class CabCrqController {
 
     @GetMapping
     public List<CrqDto> getAllCrqs(
-            @RequestParam(required = false) String stage,
             @RequestParam(required = false) String domain,
             @RequestParam(required = false) String circle,
             @RequestParam(required = false) String impact,
             @RequestParam(required = false) String serviceCode,
-            @RequestParam(required = false) String search) {
-        return cabCrqService.getAllCrqs(stage, domain, circle, impact, serviceCode, search);
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false, defaultValue = "PENDING") String serviceApprovalStatus) {
+        return cabCrqService.getAllCrqs(domain, circle, impact, serviceCode, search, serviceApprovalStatus);
     }
 
     @GetMapping("/services")

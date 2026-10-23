@@ -42,8 +42,9 @@ public class TeamOverviewController {
     }
 
     @GetMapping("/getcreateuserdropdowns")
-    public CreateUserDropdownResponseDto getCreateUserDropdowns() {
-        return teamOverviewService.getCreateUserDropdowns();
+    public CreateUserDropdownResponseDto getCreateUserDropdowns(Authentication authentication) {
+        Long actorUserId = Long.valueOf(authentication.getName());
+        return teamOverviewService.getCreateUserDropdowns(actorUserId);
     }
 
     @Auditable(module = AuditModule.USER_MANAGEMENT,
