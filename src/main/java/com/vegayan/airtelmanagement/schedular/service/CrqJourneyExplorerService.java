@@ -11,10 +11,12 @@ import com.vegayan.airtelmanagement.schedular.dto.CrqJourneySearchRowDto;
 import com.vegayan.airtelmanagement.schedular.dto.CrqJourneyStageStatusDto;
 import com.vegayan.airtelmanagement.schedular.dto.CrqPendingApprovalDto;
 import com.vegayan.airtelmanagement.schedular.dto.CrqServiceSpocDto;
+import com.vegayan.airtelmanagement.schedular.dto.CrqStageAssignmentDto;
 import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -37,26 +39,30 @@ public class CrqJourneyExplorerService extends BaseService {
                 "CALL sp_get_crq_journey_page(?)",
                 crqNo);
 
-        List<Map<String, Object>> stageRows   = resultSetWithColumn(resultSets, "STAGE");
-        List<Map<String, Object>> pendingRows = resultSetWithColumn(resultSets, "Pending_Service_Code");
-        List<Map<String, Object>> spocRows    = resultSetWithColumn(resultSets, "Spoc_Name");
-        List<Map<String, Object>> scopeRows   = resultSetWithColumn(resultSets, "domain_name");
+        // The stage-assignment set carries a STAGE column too, so each of the two
+        // is matched on a second column that only it has.
+        List<Map<String, Object>> stageRows   = resultSetWithColumns(resultSets, "STAGE", "STATUS");
+        List<Map<String, Object>> pendingRows = resultSetWithColumns(resultSets, "Pending_Service_Code");
+        List<Map<String, Object>> spocRows    = resultSetWithColumns(resultSets, "Spoc_Name");
+        List<Map<String, Object>> scopeRows   = resultSetWithColumns(resultSets, "domain_name");
+        List<Map<String, Object>> assignRows  = resultSetWithColumns(resultSets, "STAGE", "Assigned_Engineer");
 
         List<CrqJourneyStageStatusDto> stages = stageRows.stream().map(this::toStageStatusDto).toList();
         List<CrqPendingApprovalDto> pending = pendingRows.stream().map(this::toPendingApprovalDto).toList();
         List<CrqServiceSpocDto> spocs = spocRows.stream().map(this::toServiceSpocDto).toList();
         CrqJourneyScopeDto scope = scopeRows.isEmpty() ? null : toScopeDto(scopeRows.get(0));
+        List<CrqStageAssignmentDto> assignments = assignRows.stream().map(this::toStageAssignmentDto).toList();
 
-        return new CrqJourneyPageDto(stages, pending, spocs, scope);
+        return new CrqJourneyPageDto(stages, pending, spocs, scope, assignments);
     }
 
 
-    private static List<Map<String, Object>> resultSetWithColumn(
+    private static List<Map<String, Object>> resultSetWithColumns(
             List<List<Map<String, Object>>> all,
-            String column
+            String... columns
     ) {
         return all.stream()
-                .filter(rows -> !rows.isEmpty() && rows.get(0).containsKey(column))
+                .filter(rows -> !rows.isEmpty() && Arrays.stream(columns).allMatch(rows.get(0)::containsKey))
                 .findFirst()
                 .orElseGet(List::of);
     }
@@ -100,6 +106,16 @@ public class CrqJourneyExplorerService extends BaseService {
         dto.setServiceCode(str(row, "Service_Code"));
         dto.setSpocName(str(row, "Spoc_Name"));
         dto.setSpocContact(str(row, "Spoc_Contact"));
+        return dto;
+    }
+
+    private CrqStageAssignmentDto toStageAssignmentDto(Map<String, Object> row) {
+        CrqStageAssignmentDto dto = new CrqStageAssignmentDto();
+        dto.setStage(str(row, "STAGE"));
+        dto.setAssignedEngineer(str(row, "Assigned_Engineer"));
+        dto.setAssignOlmId(str(row, "Assign_OLMID"));
+        dto.setStartTime(dateTime(row, "Start_Time"));
+        dto.setEndTime(dateTime(row, "End_Time"));
         return dto;
     }
 
