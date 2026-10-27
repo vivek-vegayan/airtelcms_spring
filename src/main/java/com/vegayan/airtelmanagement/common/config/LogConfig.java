@@ -10,4 +10,5 @@ import java.lang.annotation.Target;
 public @interface LogConfig {
     boolean excludePayload() default false;
     boolean excludeResponse() default false;
+    boolean logResponse() default false;
 }

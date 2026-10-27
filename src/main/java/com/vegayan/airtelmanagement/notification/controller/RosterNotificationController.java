@@ -1,5 +1,8 @@
 package com.vegayan.airtelmanagement.notification.controller;
 
+import com.vegayan.airtelmanagement.audit.AuditAction;
+import com.vegayan.airtelmanagement.audit.AuditModule;
+import com.vegayan.airtelmanagement.audit.annotation.Auditable;
 import com.vegayan.airtelmanagement.common.dto.ApiResponse;
 import com.vegayan.airtelmanagement.notification.dto.CabRejectReasonDto;
 import com.vegayan.airtelmanagement.notification.dto.NotificationCountDto;
@@ -42,6 +45,15 @@ public class RosterNotificationController {
     }
 
 
+    // One route covers approve and reject; actionParam turns the status
+    // value into the matching verb instead of a vague UPDATE.
+    @Auditable(module = AuditModule.ROSTER,
+               subModule = AuditModule.SUB_SHIFT_CHANGE,
+               action = AuditAction.UPDATE,
+               actionParam = "status",
+               affectedUserParam = "affectedUserId",
+               remark = "Actioned a shift change",
+               keyParams = {"notificationId", "shiftDate"})
     @PostMapping("/shiftchangestatuschange")
     public ResponseEntity<ApiResponse> shiftChangeStatusChange(
             Authentication authentication,
@@ -67,6 +79,12 @@ public class RosterNotificationController {
         return rosterNotificationService.getNotificationCount(actorUserId, readFlag);
     }
 
+    @Auditable(module = AuditModule.ROSTER,
+               subModule = AuditModule.SUB_SHIFT_SWAP,
+               action = AuditAction.UPDATE,
+               actionParam = "status",
+               remark = "Responded to a shift swap request",
+               keyParams = {"notificationId", "rejectReason"})
     @PostMapping("/swapreqempaction")
     public ResponseEntity<ApiResponse> swapReqEmpAction(
             Authentication authentication,
@@ -83,6 +101,12 @@ public class RosterNotificationController {
         return ResponseEntity.ok(response);
     }
 
+    @Auditable(module = AuditModule.ROSTER,
+               subModule = AuditModule.SUB_SHIFT_SWAP,
+               action = AuditAction.UPDATE,
+               actionParam = "status",
+               remark = "Actioned a shift swap request as manager",
+               keyParams = {"notificationId", "rejectReason"})
     @PostMapping("/swapreqmanageraction")
     public ResponseEntity<ApiResponse> swapReqManagerAction(
             Authentication authentication,
@@ -99,6 +123,12 @@ public class RosterNotificationController {
         return ResponseEntity.ok(response);
     }
 
+    @Auditable(module = AuditModule.ROSTER,
+               subModule = AuditModule.SUB_LEAVE,
+               action = AuditAction.UPDATE,
+               actionParam = "status",
+               remark = "Actioned a leave request",
+               keyParams = {"notificationId", "rejectReason"})
     @PatchMapping("/leave-requests/{notificationId}/status")
     public ResponseEntity<ApiResponse> rosterLeaveStatusChange(
             Authentication authentication,
@@ -115,6 +145,12 @@ public class RosterNotificationController {
         return ResponseEntity.ok(response);
     }
 
+    @Auditable(module = AuditModule.ROSTER,
+               subModule = AuditModule.SUB_SHIFT_CHANGE,
+               action = AuditAction.UPDATE,
+               actionParam = "status",
+               remark = "Actioned a shift change request",
+               keyParams = {"notificationId", "rejectReason"})
     @PostMapping("/shiftchangenotificationaction")
     public ResponseEntity<ApiResponse> shiftChangeNotificationAction(
             Authentication authentication,
@@ -153,14 +189,13 @@ public class RosterNotificationController {
             Authentication authentication,
             @RequestParam Long notificationId,
             @RequestParam String status,
-            @RequestParam(required = false) String reason,
             @RequestParam(required = false) String comment
     ) {
 
         Long actorUserId = Long.valueOf(authentication.getName());
 
         ApiResponse response =
-                rosterNotificationService.cabRescheduleNotificationAction(actorUserId, notificationId, status, reason, comment);
+                rosterNotificationService.cabRescheduleNotificationAction(actorUserId, notificationId, status, comment);
 
         return ResponseEntity.ok(response);
     }

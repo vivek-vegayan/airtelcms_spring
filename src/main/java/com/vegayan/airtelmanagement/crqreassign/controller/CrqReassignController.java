@@ -1,5 +1,6 @@
 package com.vegayan.airtelmanagement.crqreassign.controller;
 
+import com.vegayan.airtelmanagement.common.dto.ApiResponse;
 import com.vegayan.airtelmanagement.crqreassign.dto.*;
 import com.vegayan.airtelmanagement.crqreassign.service.CrqReassignService;
 import jakarta.validation.Valid;
@@ -76,7 +77,7 @@ public class CrqReassignController {
     }
 
     @PostMapping("/cab")
-    public ReassignActionResponseDto reassignCab(Authentication auth, @Valid @RequestBody ReassignCabRequest request) {
+    public ApiResponse reassignCab(Authentication auth, @Valid @RequestBody ReassignCabRequest request) {
         return reassignService.reassignCab(userId(auth), request);
     }
 

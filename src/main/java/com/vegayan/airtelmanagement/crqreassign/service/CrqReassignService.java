@@ -1,5 +1,6 @@
 package com.vegayan.airtelmanagement.crqreassign.service;
 
+import com.vegayan.airtelmanagement.common.dto.ApiResponse;
 import com.vegayan.airtelmanagement.common.exception.BusinessException;
 import com.vegayan.airtelmanagement.common.service.BaseService;
 import com.vegayan.airtelmanagement.crqreassign.dto.*;
@@ -54,8 +55,9 @@ public class CrqReassignService extends BaseService {
         return action("CRQ_SP_REASSIGN_TIME", req.crqNo(), req.stage(), req.newStart(), req.keepDuration(), req.newEnd(), req.batchId(), olmId(userId));
     }
 
-    public ReassignActionResponseDto reassignCab(Long userId, ReassignCabRequest req) {
-        return action("CRQ_SP_REASSIGN_CAB", req.crqNo(), req.teamId(), req.cabFlag(), req.batchId(), olmId(userId));
+    public ApiResponse reassignCab(Long userId, ReassignCabRequest req) {
+        return databaseUtils.executeProcedureForMessageV1(
+                jdbcTemplateTwo, "CALL CRQ_SP_REASSIGN_CAB(?,?,?)", userId, req.crqNo(), req.sentToCab());
     }
 
     public ReassignActionResponseDto undo(Long userId, ReassignBatchRequest req) {

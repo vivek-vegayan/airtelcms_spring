@@ -2,6 +2,8 @@ package com.vegayan.airtelmanagement.cabmanager.dto;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 public class CrqDto {
     private Integer serviceApprovalId;
@@ -15,4 +17,5 @@ public class CrqDto {
     private String serviceApprovalStatus;
     private String changeImpact;
     private Integer slaPercentage;
+    private LocalDateTime createdAt;
 }

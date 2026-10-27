@@ -64,7 +64,137 @@ public class LoggingAspect {
                     "repositoryLayer() || " +
                     "@annotation(com.vegayan.airtelmanagement.common.dto.LogType)"
     )
+//    public Object logAround(ProceedingJoinPoint joinPoint) throws Throwable {
+//        long startTime = System.currentTimeMillis();
+//
+//        String correlationId = Optional.ofNullable(MDC.get("correlationId"))
+//                .orElseGet(() -> {
+//                    String id = UUID.randomUUID().toString();
+//                    MDC.put("correlationId", id);
+//                    return id;
+//                });
+//
+//        String className = joinPoint.getTarget().getClass().getSimpleName();
+//        String methodName = joinPoint.getSignature().getName();
+//        String layer = resolveLayer(joinPoint);
+//
+//        // Resolve Logger and Config
+//        Method method = ((MethodSignature) joinPoint.getSignature()).getMethod();
+//        LogConfig config = method.getAnnotation(LogConfig.class);
+//
+//        String loggerName = Optional.ofNullable(resolveLogger(joinPoint)).orElse("ROOT");
+//        Logger logger = LoggerFactory.getLogger(loggerName);
+//
+//        Object result = null;
+//        boolean isError = false;
+//        String responseData = "";
+//
+//        try {
+//            // ===== START LOGGING =====
+//            if ("CONTROLLER".equals(layer)) {
+//                logger.info(SEPARATOR);
+//                String payload;
+//                if (config != null && config.excludePayload()) {
+//                    payload = "[EXCLUDED]";
+//                } else {
+//                    payload = getRawRequestBody();
+//                    if (payload == null || payload.isBlank()) {
+//                        payload = safeArgs(joinPoint);
+//                    }
+//                }
+//                logger.info(LOG_START, correlationId, className, methodName, payload);
+//            }
+//
+//            if ("SERVICE".equals(layer)) {
+//                logger.info("[SERVICE_START] id={} | class={} | method={} | request={}",
+//                        correlationId, className, methodName, safeArgs(joinPoint));
+//            }
+//
+//            if ("REPOSITORY".equals(layer)) {
+//                logger.info(LOG_DB_REQUEST, correlationId, className, methodName, safeArgs(joinPoint));
+//            }
+//
+//            // PROCEED
+//            result = joinPoint.proceed();
+//
+//            if ("SERVICE".equals(layer)) {
+//                logger.info("[SERVICE_END] id={} | class={} | method={} | response={}",
+//                        correlationId, className, methodName, safeObject(result));
+//            }
+//
+//            if ("REPOSITORY".equals(layer)) {
+//                logger.info(LOG_DB_RESPONSE, correlationId, className, methodName, safeObject(result));
+//            }
+//
+//            // Capture successful response for controller
+//            if ("CONTROLLER".equals(layer)) {
+//                if (config != null && config.excludeResponse()) {
+//                    responseData = "[RESPONSE_EXCLUDED_OR_BINARY]";
+//                } else {
+//                    Object responseBody = result instanceof ResponseEntity<?>
+//                            ? ((ResponseEntity<?>) result).getBody()
+//                            : result;
+//                    responseData = safeObject(responseBody);
+//                }
+//            }
+//
+//        } catch (Exception ex) {
+//            isError = true;
+//            long timeTaken = System.currentTimeMillis() - startTime;
+//
+//            if ("REPOSITORY".equals(layer)) {
+//                logger.error(LOG_DB_ERROR, correlationId, className, methodName, ex.getMessage());
+//            }
+//            if ("SERVICE".equals(layer)) {
+//                logger.error("[SERVICE_ERROR] id={} | class={} | method={} | error={}",
+//                        correlationId, className, methodName, ex.getMessage());
+//            }
+//            if ("CONTROLLER".equals(layer)) {
+//                responseData = safeObject(Map.of("status", "Fail", "message", ex.getMessage()));
+//                logger.error(LOG_ERROR_RESPONSE, correlationId, timeTaken, responseData);
+//            }
+//
+//            throw ex;
+//
+//        } finally {
+//            // FIX: Ensure MDC is always cleared and Controller block completes cleanly
+//            if ("CONTROLLER".equals(layer)) {
+//                long timeTaken = System.currentTimeMillis() - startTime;
+//
+//                // Only log the success response if it wasn't an error (error already logged in catch block)
+//                if (!isError) {
+//                    if (responseData.contains("\"status\":\"Fail\"")) {
+//                        logger.error(LOG_ERROR_RESPONSE, correlationId, timeTaken, responseData);
+//                    } else {
+//                        logger.info(LOG_SUCCESS_RESPONSE, correlationId, timeTaken, responseData);
+//                    }
+//                }
+//
+//                logger.info(SEPARATOR);
+//                MDC.clear();
+//            }
+//        }
+//
+//        return result;
+//    }
+
+
     public Object logAround(ProceedingJoinPoint joinPoint) throws Throwable {
+        Method method = ((MethodSignature) joinPoint.getSignature()).getMethod();
+        LogConfig config = method.getAnnotation(LogConfig.class);
+        String customLogger = resolveLogger(joinPoint);
+
+        // Log only methods marked with @LogConfig or @LogType; everything else runs silently
+        if (config == null && customLogger == null) {
+            return joinPoint.proceed();
+        }
+
+        boolean printResponse = config != null && config.logResponse() && !config.excludeResponse();
+        // @LogType (external APIs) keeps full request/response logging in its own file
+        if (customLogger != null && (config == null || !config.excludeResponse())) {
+            printResponse = true;
+        }
+
         long startTime = System.currentTimeMillis();
 
         String correlationId = Optional.ofNullable(MDC.get("correlationId"))
@@ -78,19 +208,13 @@ public class LoggingAspect {
         String methodName = joinPoint.getSignature().getName();
         String layer = resolveLayer(joinPoint);
 
-        // Resolve Logger and Config
-        Method method = ((MethodSignature) joinPoint.getSignature()).getMethod();
-        LogConfig config = method.getAnnotation(LogConfig.class);
-
-        String loggerName = Optional.ofNullable(resolveLogger(joinPoint)).orElse("ROOT");
-        Logger logger = LoggerFactory.getLogger(loggerName);
+        Logger logger = LoggerFactory.getLogger(Optional.ofNullable(customLogger).orElse("ROOT"));
 
         Object result = null;
         boolean isError = false;
         String responseData = "";
 
         try {
-            // ===== START LOGGING =====
             if ("CONTROLLER".equals(layer)) {
                 logger.info(SEPARATOR);
                 String payload;
@@ -114,28 +238,22 @@ public class LoggingAspect {
                 logger.info(LOG_DB_REQUEST, correlationId, className, methodName, safeArgs(joinPoint));
             }
 
-            // PROCEED
             result = joinPoint.proceed();
 
-            if ("SERVICE".equals(layer)) {
+            if ("SERVICE".equals(layer) && printResponse) {
                 logger.info("[SERVICE_END] id={} | class={} | method={} | response={}",
                         correlationId, className, methodName, safeObject(result));
             }
 
-            if ("REPOSITORY".equals(layer)) {
+            if ("REPOSITORY".equals(layer) && printResponse) {
                 logger.info(LOG_DB_RESPONSE, correlationId, className, methodName, safeObject(result));
             }
 
-            // Capture successful response for controller
-            if ("CONTROLLER".equals(layer)) {
-                if (config != null && config.excludeResponse()) {
-                    responseData = "[RESPONSE_EXCLUDED_OR_BINARY]";
-                } else {
-                    Object responseBody = result instanceof ResponseEntity<?>
-                            ? ((ResponseEntity<?>) result).getBody()
-                            : result;
-                    responseData = safeObject(responseBody);
-                }
+            if ("CONTROLLER".equals(layer) && printResponse) {
+                Object responseBody = result instanceof ResponseEntity<?>
+                        ? ((ResponseEntity<?>) result).getBody()
+                        : result;
+                responseData = safeObject(responseBody);
             }
 
         } catch (Exception ex) {
@@ -157,13 +275,13 @@ public class LoggingAspect {
             throw ex;
 
         } finally {
-            // FIX: Ensure MDC is always cleared and Controller block completes cleanly
             if ("CONTROLLER".equals(layer)) {
                 long timeTaken = System.currentTimeMillis() - startTime;
 
-                // Only log the success response if it wasn't an error (error already logged in catch block)
                 if (!isError) {
-                    if (responseData.contains("\"status\":\"Fail\"")) {
+                    if (!printResponse) {
+                        logger.info("[END] APP_TO_CLIENT_RESPONSE | id={} | timeMs={}ms", correlationId, timeTaken);
+                    } else if (responseData.contains("\"status\":\"Fail\"")) {
                         logger.error(LOG_ERROR_RESPONSE, correlationId, timeTaken, responseData);
                     } else {
                         logger.info(LOG_SUCCESS_RESPONSE, correlationId, timeTaken, responseData);
@@ -177,6 +295,7 @@ public class LoggingAspect {
 
         return result;
     }
+
 
     private String resolveLayer(ProceedingJoinPoint joinPoint) {
         Class<?> targetClass = AopUtils.getTargetClass(joinPoint.getTarget());

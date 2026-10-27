@@ -16,6 +16,7 @@ public final class AuditModule {
     public static final String AUTHENTICATION       = "Authentication";
     public static final String NOTIFICATION_SYSTEM  = "Notification System";
     public static final String ME                   = "Me";
+    public static final String ROSTER               = "Roster Management";
 
     // ── Sub-modules ──────────────────────────────────────────────────────
     public static final String SUB_USER             = "User";
@@ -46,4 +47,9 @@ public final class AuditModule {
     public static final String SUB_NOTIFICATION_CFG = "Notification Configuration";
     public static final String SUB_LEAVE            = "Leave";
     public static final String SUB_AUDIT_LOG        = "Audit Log";
+    public static final String SUB_GOLDEN_SET       = "Golden Set";
+    public static final String SUB_FUTURE_WEEK      = "Future Week Roster";
+    public static final String SUB_SHIFT_CHANGE     = "Shift Change";
+    public static final String SUB_SHIFT_SWAP       = "Shift Swap";
+    public static final String SUB_ROSTER_IMPORT    = "Roster Import";
 }

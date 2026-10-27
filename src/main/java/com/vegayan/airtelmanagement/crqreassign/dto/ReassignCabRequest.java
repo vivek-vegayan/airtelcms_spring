@@ -1,12 +1,11 @@
 package com.vegayan.airtelmanagement.crqreassign.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 
-/** Either crqNo (single CRQ) or teamId (every open CRQ of that team). */
+/** Send to CAB decision for one CRQ (CRQ_SP_REASSIGN_CAB). */
 public record ReassignCabRequest(
-        String crqNo,
-        Integer teamId,
-        @NotBlank String cabFlag,
-        String batchId
+        @NotBlank String crqNo,
+        @NotBlank @Pattern(regexp = "(?i)YES|NO", message = "sentToCab must be YES or NO") String sentToCab
 ) {
 }
