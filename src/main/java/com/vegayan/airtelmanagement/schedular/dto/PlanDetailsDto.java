@@ -17,4 +17,5 @@ public class PlanDetailsDto {
     private String layer;
     private String planVendor;
     private String changeImpact;
+    private String sendToCab;
 }

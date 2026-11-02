@@ -27,6 +27,7 @@ public class PlanActivityExcelRowDto {
     private String planType;
     private String vendorOem;
     private String changeImpact;
+    private String sendToCab;       // YES / NO
 
     // ── Activity ─────────────────────────────────────────────────────────
     private String activityName;

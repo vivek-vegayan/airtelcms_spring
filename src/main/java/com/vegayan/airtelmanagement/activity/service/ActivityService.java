@@ -300,10 +300,10 @@ public class ActivityService extends BaseService {
 
     public ApiResponse updatePlan(Long actorUserId, UpdatePlanDto request) {
 
-        String sql = "CALL sp_update_plan(?,?,?,?,?,?,?,?,?,?)";
+        String sql = "CALL sp_update_plan(?,?,?,?,?,?,?,?,?,?,?)";
 
         LOGGER.info(
-                "CALL sp_update_plan({}, {}, {}, {}, {}, {}, {}, {}, {}, {})",
+                "CALL sp_update_plan({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})",
                 actorUserId,
                 request.getPlanId(),
                 request.getPlanType(),
@@ -313,7 +313,8 @@ public class ActivityService extends BaseService {
                 request.getNetworkDomain(),
                 request.getLayer(),
                 request.getPlanVendor(),
-                request.getChangeImpact()
+                request.getChangeImpact(),
+                request.getSendToCab()
         );
 
         return databaseUtils.executeProcedureForMessageV1(
@@ -328,7 +329,8 @@ public class ActivityService extends BaseService {
                 request.getNetworkDomain(),
                 request.getLayer(),
                 request.getPlanVendor(),
-                request.getChangeImpact()
+                request.getChangeImpact(),
+                request.getSendToCab()
         );
     }
 

@@ -44,7 +44,7 @@ import java.util.TreeSet;
  * Bulk upload for the static template at public/templates/Plan_Activity_Upload_Template.xlsx
  * (React). Sheet "Upload": row 1 banner, row 2 header, data from row 3. One Activity = a block
  * of 6 rows sharing an Activity Ref (col A), one row per phase. Plan / Activity columns B-K
- * are read from the block's CRQ Review row only. Each phase row is one sp_insert_plan_activity call.
+ * and Send to CAB (col T) are read from the block's CRQ Review row only. Each phase row is one sp_insert_plan_activity call.
  */
 @Service
 public class PlanActivityExcelService extends BaseService {
@@ -67,7 +67,8 @@ public class PlanActivityExcelService extends BaseService {
     private static final int COL_REF = 0, COL_VERTICAL = 1, COL_FUNCTION = 2, COL_DOMAIN = 3, COL_SUB_DOMAIN = 4,
             COL_NETWORK_DOMAIN = 5, COL_LAYER = 6, COL_PLAN_TYPE = 7, COL_VENDOR = 8, COL_IMPACT = 9,
             COL_ACTIVITY_NAME = 10, COL_PHASE = 11, COL_SHIFT = 12, COL_LEVEL = 13, COL_TIME = 14,
-            COL_TEAM = 15, COL_DAYS_MARGIN = 16, COL_RESERVATION_MARGIN = 17, COL_ROLLBACK_TIME = 18;
+            COL_TEAM = 15, COL_DAYS_MARGIN = 16, COL_RESERVATION_MARGIN = 17, COL_ROLLBACK_TIME = 18,
+            COL_SEND_TO_CAB = 19; // column U is a helper formula
 
     private static final String CRQ_REVIEW = "CRQ Review";
     private static final String EXECUTION = "Execution";
@@ -131,6 +132,7 @@ public class PlanActivityExcelService extends BaseService {
                     activity.setVendorOem(text(fmt, row, COL_VENDOR));
                     activity.setChangeImpact(text(fmt, row, COL_IMPACT));
                     activity.setActivityName(text(fmt, row, COL_ACTIVITY_NAME));
+                    activity.setSendToCab(text(fmt, row, COL_SEND_TO_CAB));
                 }
             }
         }
@@ -147,7 +149,8 @@ public class PlanActivityExcelService extends BaseService {
         boolean planEmpty = isBlank(a.getVerticalName()) && isBlank(a.getFunctionName())
                 && isBlank(a.getChmDomainName()) && isBlank(a.getChmSubDomainName())
                 && isBlank(a.getNetworkDomain()) && isBlank(a.getLayer()) && isBlank(a.getPlanType())
-                && isBlank(a.getVendorOem()) && isBlank(a.getChangeImpact()) && isBlank(a.getActivityName());
+                && isBlank(a.getVendorOem()) && isBlank(a.getChangeImpact()) && isBlank(a.getActivityName())
+                && isBlank(a.getSendToCab());
         if (!planEmpty) return false;
         for (PlanActivityExcelPhaseDto p : a.getPhases()) {
             if (!isBlank(p.getShift()) || !isBlank(p.getMinimumLevelRequirement())
@@ -181,9 +184,9 @@ public class PlanActivityExcelService extends BaseService {
         }
     }
 
-    /** Only data columns A-S count — column T is a helper formula. */
+    /** Only data columns A-T count — column U is a helper formula. */
     private boolean isRowEmpty(DataFormatter fmt, Row row) {
-        for (int c = COL_REF; c <= COL_ROLLBACK_TIME; c++) {
+        for (int c = COL_REF; c <= COL_SEND_TO_CAB; c++) {
             if (text(fmt, row, c) != null) return false;
         }
         return true;
@@ -539,7 +542,7 @@ public class PlanActivityExcelService extends BaseService {
                     "Row " + e.getRowNumber() + " — " + e.getColumn() + ": " + e.getError());
         }
 
-        String sql = "CALL sp_insert_plan_activity(" + "?,".repeat(18) + "?)";
+        String sql = "CALL sp_insert_plan_activity(" + "?,".repeat(19) + "?)";
 
         int success = 0;
         int failed = 0;
