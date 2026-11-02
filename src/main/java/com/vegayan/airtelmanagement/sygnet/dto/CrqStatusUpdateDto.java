@@ -252,4 +252,55 @@ public class CrqStatusUpdateDto {
 
     @JsonProperty("CRQ Closed By Time")
     private String crqClosedByTime;
+
+
+
+    //new field
+    @JsonProperty("Activity Slot")
+    private String activitySlot;
+
+    @JsonProperty("Execution Engineer Details")
+    private String executionEngineerDetails;
+
+    @JsonProperty("Cancellation Date and Time")
+    private String cancellationDateAndTime;
+
+//    @JsonProperty("Change Manager Group")
+//    private String changeManagerGroup;
+
+//    @JsonProperty("Change Manager Company")
+//    private String changeManagerCompany;
+
+//    @JsonProperty("Change Manager Organization")
+//    private String changeManagerOrganization;
+
+    @JsonProperty("CMS Function")
+    private String cmsFunction;
+
+    @JsonProperty("CMS Sub-Function")
+    private String cmsSubFunction;
+
+    @JsonProperty("CRQ Stage in CMS")
+    private String crqStageInCms;
+
+    @JsonProperty("CRQ Status in CMS")
+    private String crqStatusInCms;
+
+    @JsonProperty("Node Type")
+    private String nodeType;
+
+    @JsonProperty("Requested End Date")
+    private String requestedEndDate;
+
+    @JsonProperty("Requested Start Date")
+    private String requestedStartDate;
+
+    @JsonProperty("Activity Sequence")
+    private String activitySequence;
+
+    @JsonProperty("Approver Rejection Date and Time")
+    private String approverRejectionDateAndTime;
+
+    @JsonProperty("Update_Name")
+    private String updateName;
 }
