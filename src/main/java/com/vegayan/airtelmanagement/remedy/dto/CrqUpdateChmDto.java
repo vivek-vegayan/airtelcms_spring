@@ -362,9 +362,37 @@ public class CrqUpdateChmDto {
     @JsonProperty("Impacted Parties CAB19")
     private String impactedPartiesCab19;
 
+
+    //new field add on 02-11-2026
+
     @JsonProperty("Update_Name")
     private String updateName;
 
+    @JsonProperty("Task ID")
+    private String taskId;
 
+    @JsonProperty("Circle")
+    private String circle;
+
+    @JsonProperty("Impacted Parties CAB")
+    private String impactedPartiesCab;
+
+    @JsonProperty("z1D_Action")
+    private String z1DAction;
+
+//    @JsonProperty("MOP Created")
+//    private String mopCreated;
+//
+//    @JsonProperty("MOP Validated")
+//    private String mopValidated;
+//
+//    @JsonProperty("CRQ Validated")
+//    private String crqValidated;
+//
+//    @JsonProperty("CRQ Scheduled")
+//    private String crqScheduled;
+
+//    @JsonProperty("Impact Analysis Done")
+//    private String impactAnalysisDone;
 
 }
