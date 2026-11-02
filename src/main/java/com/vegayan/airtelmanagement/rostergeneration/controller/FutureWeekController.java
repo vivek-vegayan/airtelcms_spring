@@ -1,5 +1,8 @@
 package com.vegayan.airtelmanagement.rostergeneration.controller;
 
+import com.vegayan.airtelmanagement.audit.AuditAction;
+import com.vegayan.airtelmanagement.audit.AuditModule;
+import com.vegayan.airtelmanagement.audit.annotation.Auditable;
 import com.vegayan.airtelmanagement.common.dto.ApiResponse;
 import com.vegayan.airtelmanagement.rostergeneration.dto.FutureWeekAddToRosterRequest;
 import com.vegayan.airtelmanagement.rostergeneration.dto.FutureWeekResponseDto;
@@ -42,6 +45,10 @@ public class FutureWeekController {
         );
     }
 
+    @Auditable(module = AuditModule.ROSTER,
+               subModule = AuditModule.SUB_FUTURE_WEEK,
+               action = AuditAction.UPDATE,
+               remark = "Updated the future week roster")
     @PostMapping("/futureweek/update")
     public ResponseEntity<ApiResponse> updateFutureWeek(
             @RequestBody List<FutureWeekUpdateRequest> requests,
@@ -59,6 +66,11 @@ public class FutureWeekController {
         return ResponseEntity.ok(response);
     }
 
+    @Auditable(module = AuditModule.ROSTER,
+               subModule = AuditModule.SUB_FUTURE_WEEK,
+               action = AuditAction.SUBMIT,
+               remark = "Added the future week to the roster",
+               keyParams = {"request.domainId", "request.subDomainId", "request.isoWeek"})
     @PostMapping("/futureweek/addtoroster")
     public ResponseEntity<ApiResponse> addFutureWeekToRoster(
             @RequestBody FutureWeekAddToRosterRequest request,

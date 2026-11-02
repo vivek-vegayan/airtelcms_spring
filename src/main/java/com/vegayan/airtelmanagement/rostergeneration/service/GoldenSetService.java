@@ -5,9 +5,16 @@ import com.vegayan.airtelmanagement.common.service.BaseService;
 import com.vegayan.airtelmanagement.rostergeneration.dto.DailyGoldenSetRequestDto;
 import com.vegayan.airtelmanagement.rostergeneration.dto.GoldenSetResponseDto;
 import com.vegayan.airtelmanagement.rostergeneration.dto.GoldenSetRowDto;
+import com.vegayan.airtelmanagement.rostergeneration.dto.GoldenWeekDateDto;
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -24,29 +31,64 @@ public class GoldenSetService extends BaseService {
 
         String sql = "CALL sp_get_golden_set(?, ?, ?)";
 
+        // The proc compares p_sub_domain_id > 0 / = 0, so a NULL would match
+        // nothing — 0 means "every sub domain of domainId".
+        Long effectiveDomainId = domainId == null ? 0L : domainId;
+        Long effectiveSubDomainId = subDomainId == null ? 0L : subDomainId;
+
         LOGGER.info(
                 "call sp_get_golden_set('{}','{}','{}');",
                 actorUserId,
-                domainId,
-                subDomainId
+                effectiveDomainId,
+                effectiveSubDomainId
         );
-
-        List<GoldenSetRowDto> rows =
-                databaseUtils.executeProcedureGetDataWithError(
-                        jdbcTemplateTwo,
-                        sql,
-                        GoldenSetRowDto.class,
-                        actorUserId,
-                        domainId,
-                        subDomainId
-                );
 
         GoldenSetResponseDto response =
                 new GoldenSetResponseDto();
 
+        // Result set 1 = employee rows, result set 2 = W1..W6 calendar dates.
+        jdbcTemplateTwo.execute((Connection con) -> {
+            CallableStatement cs = con.prepareCall(sql);
+            cs.setObject(1, actorUserId);
+            cs.setObject(2, effectiveDomainId);
+            cs.setObject(3, effectiveSubDomainId);
+            return cs;
+        }, (CallableStatement cs) -> {
+
+            List<GoldenSetRowDto> rows = new ArrayList<>();
+            List<GoldenWeekDateDto> weeks = new ArrayList<>();
+
+            boolean hasResults = cs.execute();
+
+            if (hasResults) {
+                try (ResultSet rs = cs.getResultSet()) {
+                    RowMapper<GoldenSetRowDto> mapper =
+                            new BeanPropertyRowMapper<>(GoldenSetRowDto.class);
+                    int rowNum = 0;
+                    while (rs.next()) {
+                        rows.add(mapper.mapRow(rs, rowNum++));
+                    }
+                }
+            }
+
+            if (cs.getMoreResults()) {
+                try (ResultSet rs = cs.getResultSet()) {
+                    RowMapper<GoldenWeekDateDto> mapper =
+                            new BeanPropertyRowMapper<>(GoldenWeekDateDto.class);
+                    int rowNum = 0;
+                    while (rs.next()) {
+                        weeks.add(mapper.mapRow(rs, rowNum++));
+                    }
+                }
+            }
+
+            response.setData(rows);
+            response.setWeeks(weeks);
+            return null;
+        });
+
         response.setSuccess(true);
-        response.setTotalEmployees(rows.size());
-        response.setData(rows);
+        response.setTotalEmployees(response.getData().size());
 
         return response;
     }

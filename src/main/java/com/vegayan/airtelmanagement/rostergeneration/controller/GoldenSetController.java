@@ -1,5 +1,8 @@
 package com.vegayan.airtelmanagement.rostergeneration.controller;
 
+import com.vegayan.airtelmanagement.audit.AuditAction;
+import com.vegayan.airtelmanagement.audit.AuditModule;
+import com.vegayan.airtelmanagement.audit.annotation.Auditable;
 import com.vegayan.airtelmanagement.common.dto.ApiResponse;
 import com.vegayan.airtelmanagement.rostergeneration.dto.DailyGoldenSetRequestDto;
 import com.vegayan.airtelmanagement.rostergeneration.dto.GoldenSetResponseDto;
@@ -39,6 +42,10 @@ public class GoldenSetController {
         );
     }
 
+    @Auditable(module = AuditModule.ROSTER,
+               subModule = AuditModule.SUB_GOLDEN_SET,
+               action = AuditAction.UPDATE,
+               remark = "Saved the golden set roster")
     @PostMapping("/dailygoldenset")
     public ResponseEntity<ApiResponse> insertDailyGoldenSet(
             @RequestBody List<DailyGoldenSetRequestDto> requests,

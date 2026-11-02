@@ -19,6 +19,9 @@ public class JwtUtil {
     @Value("${jwt.token.expirationTime}")
     private long expirationTime;
 
+    @Value("${jwt.simpleToken.expirationTime:604800000}")
+    private long simpleTokenExpirationTime;
+
     @Value("${jwt.secret}")
     private String secret;
 
@@ -68,7 +71,7 @@ public class JwtUtil {
                 .setSubject(username)
                 .claim("username", username)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + expirationTime))
+                .setExpiration(new Date(System.currentTimeMillis() + simpleTokenExpirationTime))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }

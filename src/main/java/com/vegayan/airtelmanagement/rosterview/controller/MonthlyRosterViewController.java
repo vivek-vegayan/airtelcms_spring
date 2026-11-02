@@ -1,5 +1,8 @@
 package com.vegayan.airtelmanagement.rosterview.controller;
 
+import com.vegayan.airtelmanagement.audit.AuditAction;
+import com.vegayan.airtelmanagement.audit.AuditModule;
+import com.vegayan.airtelmanagement.audit.annotation.Auditable;
 import com.vegayan.airtelmanagement.common.dto.ApiResponse;
 import com.vegayan.airtelmanagement.rosterview.dto.CurrentShiftCountDto;
 import com.vegayan.airtelmanagement.rosterview.dto.MonthlyRosterResponseDto;
@@ -48,6 +51,12 @@ public class MonthlyRosterViewController {
         return monthlyRosterViewService.getCurrentShiftCount(domainId, subDomainId);
     }
 
+    @Auditable(module = AuditModule.ROSTER,
+               subModule = AuditModule.SUB_SHIFT_CHANGE,
+               action = AuditAction.UPDATE,
+               affectedUserParam = "affectedUserId",
+               remark = "Changed an employee's shift",
+               keyParams = {"shiftDate", "newShiftId", "reason"})
     @PostMapping("/changeshift")
     public ResponseEntity<ApiResponse> changeShift(
             @RequestParam Long affectedUserId,
@@ -73,6 +82,12 @@ public class MonthlyRosterViewController {
         return ResponseEntity.ok(response);
     }
 
+    // The response carries no status field, so a partially failed import is
+    // still recorded - the rows that succeeded were saved.
+    @Auditable(module = AuditModule.ROSTER,
+               subModule = AuditModule.SUB_ROSTER_IMPORT,
+               action = AuditAction.UPLOAD,
+               remark = "Imported roster shifts")
     @PostMapping("/importshifts")
     public RosterImportResponseDto importShifts(@RequestBody List<RosterImportRequestDto> employees) {
         return monthlyRosterViewService.importRosterShifts(employees);
@@ -83,6 +98,12 @@ public class MonthlyRosterViewController {
         return monthlyRosterViewService.shiftDropDowns();
     }
 
+    @Auditable(module = AuditModule.ROSTER,
+               subModule = AuditModule.SUB_SHIFT_SWAP,
+               action = AuditAction.UPDATE,
+               affectedUserParam = "affectedUserId1",
+               remark = "Swapped shifts between two employees",
+               keyParams = {"shiftDate1", "affectedUserId2", "shiftDate2", "shiftSwapReason"})
     @PostMapping("/shiftswapbymanager")
     public ResponseEntity<ApiResponse> shiftSwapByManager(
             @RequestParam Long affectedUserId1,
@@ -100,6 +121,12 @@ public class MonthlyRosterViewController {
     }
 
 
+    @Auditable(module = AuditModule.ROSTER,
+               subModule = AuditModule.SUB_SHIFT_SWAP,
+               action = AuditAction.SUBMIT,
+               affectedUserParam = "recipientUserId",
+               remark = "Requested a shift swap",
+               keyParams = {"shiftDate1", "shiftDate2", "shiftSwapReason"})
     @PostMapping("/shiftswapreqbyteammember")
     public ResponseEntity<ApiResponse> shiftSwapReqByTeamMember(
             @RequestParam LocalDate shiftDate1,

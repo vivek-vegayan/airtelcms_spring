@@ -15,4 +15,5 @@ public class CrqJourneyPageDto {
     private List<CrqPendingApprovalDto>    pendingApprovals;
     private List<CrqServiceSpocDto>        serviceSpocs;
     private CrqJourneyScopeDto             scope;
+    private List<CrqStageAssignmentDto>    stageAssignments;
 }

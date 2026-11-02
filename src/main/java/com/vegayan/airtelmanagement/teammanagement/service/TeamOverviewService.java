@@ -220,7 +220,7 @@ public class TeamOverviewService extends BaseService {
     //Create Other User
     public ApiResponse addNewOtherEmployee(CommonEmployeeCreateRequestDto request, Long actorUserId) {
 
-        String sql = "CALL sp_create_user_for_other_user(?,?,?,?,?,?,?)";
+        String sql = "CALL sp_create_user_for_other_user(?,?,?,?,?,?,?,?,?,?,?)";
         String encryptedPassword = passwordEncoder.encode(request.getOlmid());
 
         Object[] params = {
@@ -230,7 +230,11 @@ public class TeamOverviewService extends BaseService {
                 request.getEmailId(),
                 request.getMobileNo(),
                 encryptedPassword,
-                request.getRoleCode()
+                request.getRoleCode(),
+                request.getVerticalId(),
+                request.getFunctionId(),
+                request.getDomainId(),
+                request.getSubDomainId()
         };
 
         LOGGER.info(CommonService.formatProcedureCall("sp_create_user_for_other_user", params));

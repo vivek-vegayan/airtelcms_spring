@@ -44,13 +44,15 @@ public class CabCrqController {
 
     @GetMapping
     public List<CrqDto> getAllCrqs(
+            Authentication authentication,
             @RequestParam(required = false) String domain,
             @RequestParam(required = false) String circle,
             @RequestParam(required = false) String impact,
             @RequestParam(required = false) String serviceCode,
             @RequestParam(required = false) String search,
             @RequestParam(required = false, defaultValue = "PENDING") String serviceApprovalStatus) {
-        return cabCrqService.getAllCrqs(domain, circle, impact, serviceCode, search, serviceApprovalStatus);
+        Long actorUserId = Long.valueOf(authentication.getName());
+        return cabCrqService.getAllCrqs(actorUserId, domain, circle, impact, serviceCode, search, serviceApprovalStatus);
     }
 
     @GetMapping("/services")

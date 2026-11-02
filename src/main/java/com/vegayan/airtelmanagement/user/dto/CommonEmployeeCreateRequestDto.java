@@ -27,5 +27,10 @@ public class CommonEmployeeCreateRequestDto {
     @NotNull(message = "Role Code is required")
     private String roleCode;
 
+    // Optional hierarchy mapping for USER_ROLE_MAP
+    private Integer verticalId;
+    private Integer functionId;
+    private Integer domainId;
+    private Integer subDomainId;
 
 }

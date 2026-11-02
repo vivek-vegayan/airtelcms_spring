@@ -10,4 +10,5 @@ public class GoldenSetResponseDto {
     private boolean success;
     private Integer totalEmployees;
     private List<GoldenSetRowDto> data;
+    private List<GoldenWeekDateDto> weeks;
 }

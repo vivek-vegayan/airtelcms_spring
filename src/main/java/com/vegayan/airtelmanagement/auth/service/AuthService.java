@@ -27,6 +27,9 @@ public class AuthService extends BaseService {
     @Value("${jwt.token.expirationTime}")
     private long tokenTtlMillis;
 
+    @Value("${session.idle.timeout.minutes:30}")
+    private long idleTimeoutMinutes;
+
     private static final String LIVE_SESSION_PREDICATE = "valid = true AND expires_at > NOW()";
 
 
@@ -124,7 +127,13 @@ public class AuthService extends BaseService {
             String insertTokenSql = "INSERT INTO  AUTH_JWT_TOKENS (token_id, username, issued_at, expires_at, valid) VALUES (?, ?, ?, ?, ?)";
             long now = System.currentTimeMillis();
             Timestamp issuedAt = new Timestamp(now);
-            Timestamp expiresAt = new Timestamp(now + tokenTtlMillis);
+            // expires_at is the idle deadline, not the JWT's 12-hour exp: it starts
+            // one idle window out and TokenValidationService slides it forward on
+            // each request. A session abandoned without logout (browser closed,
+            // logout call failed) therefore stops counting as "Already Logged"
+            // after the idle timeout instead of when the JWT expires.
+            long idleMillis = idleTimeoutMinutes * 60_000;
+            Timestamp expiresAt = new Timestamp(now + Math.min(idleMillis, tokenTtlMillis));
             boolean valid = true;
 
             databaseUtils.updateUsingProcedure(jdbcTemplateOne, insertTokenSql, tokenId, olmId, issuedAt, expiresAt, valid);

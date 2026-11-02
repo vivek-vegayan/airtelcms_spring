@@ -29,21 +29,21 @@ public class CabCrqService extends BaseService {
 
     // ── ALL CRQs ────────────────────────────────────────────────────────────
 
-    public List<CrqDto> getAllCrqs(String domain, String circle, String impact, String serviceCode,
-                                   String search, String serviceApprovalStatus) {
+    public List<CrqDto> getAllCrqs(Long actorUserId, String domain, String circle, String impact,
+                                   String serviceCode, String search, String serviceApprovalStatus) {
 
-        String sql = "CALL sp_get_cab_crqs(?,?,?,?,?,?)";
+        String sql = "CALL sp_get_cab_crqs(?,?,?,?,?,?,?)";
 
         LOGGER.info(
-                "call sp_get_cab_crqs('{}','{}','{}','{}','{}','{}');",
-                domain, circle, impact, serviceCode, search, serviceApprovalStatus
+                "call sp_get_cab_crqs('{}','{}','{}','{}','{}','{}','{}');",
+                actorUserId, domain, circle, impact, serviceCode, search, serviceApprovalStatus
         );
 
         return databaseUtils.executeProcedureGetDataWithError(
                 jdbcTemplateTwo,
                 sql,
                 CrqDto.class,
-                domain, circle, impact, serviceCode, search, serviceApprovalStatus
+                actorUserId, domain, circle, impact, serviceCode, search, serviceApprovalStatus
         );
     }
 

@@ -106,12 +106,12 @@ public final class ProcedureCallFormatter {
     }
 
     /**
-     * Longest string argument reproduced in full. Past this the value is cut,
-     * because arguments here are not all small: a MOP document reaches
-     * SP_STORE_CRQ_MOP_CREATE_PDF as ~33 MB of base64, which would otherwise
-     * be written to the console and to every file appender on every upload.
+     * Longest string argument reproduced in full. Currently unlimited so every
+     * logged call stays runnable; the one known huge argument - a MOP document
+     * reaching SP_STORE_CRQ_MOP_CREATE_PDF as ~33 MB of base64 - is summarised
+     * by the PDF check in {@link #literal(Object, int)} instead of being cut.
      */
-    private static final int MAX_LITERAL_CHARS = 256;
+    private static final int MAX_LITERAL_CHARS = Integer.MAX_VALUE;
 
     /** SQL literal for one argument - unquoted for numbers, NULL for null. */
     private static String literal(Object value) {
@@ -128,7 +128,13 @@ public final class ProcedureCallFormatter {
         if (value instanceof byte[] bytes) {
             return "<binary, " + bytes.length + " bytes>";
         }
+
         String raw = value.toString();
+
+        // Base64 PDF always starts with "JVBERi0" (= "%PDF-"); log that it arrived, not its content
+        if (raw.startsWith("JVBERi0")) {
+            return "<PDF received, " + (raw.length() * 3L / 4 / 1024) + " KB>";
+        }
         if (raw.length() > maxLiteralChars) {
             // Deliberately not a valid literal: a truncated value must not
             // look like something that can be pasted and run.
