@@ -36,7 +36,10 @@ public final class PlanActivityExcelMapper {
                 // Execution details (procedure nulls these for non-Execution phases)
                 phase.getDaysMargin(),
                 phase.getReservationMargin(),
-                phase.getRollbackTime()
+                phase.getRollbackTime(),
+
+                // Plan-level, from the CRQ Review row like the other plan columns
+                activity.getSendToCab()
         };
     }
 }
