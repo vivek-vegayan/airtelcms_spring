@@ -15,6 +15,7 @@ import com.vegayan.airtelmanagement.common.util.ProcedureCallFormatter;
 
 import com.vegayan.airtelmanagement.remedy.service.CrqService;
 import com.vegayan.airtelmanagement.schedular.dto.*;
+import com.vegayan.airtelmanagement.sygnet.service.CrqStatusUpdateService;
 import com.vegayan.airtelmanagement.sygnet.service.PushCrqStatusService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataAccessException;
@@ -38,6 +39,7 @@ public class CrqWorkflowService extends BaseService {
     private final CrqService crqService;
     private final PushCrqStatusService pushCrqStatusService;
     private final CrqHierarchyBuilder builder;
+    private final CrqStatusUpdateService crqStatusUpdateService;
 
     //------------------------STAGE METADATA------------------------------------------------
 
@@ -76,6 +78,24 @@ public class CrqWorkflowService extends BaseService {
                 .filter(s -> s.startsWith("CANCEL"))
                 .ifPresent(s -> {
                     cancelCrqLog.info("[CANCEL CRQ] CANCEL detected → Calling Remedy API");
+
+                    // Call CRQ Status Update API
+                    try {
+                        cancelCrqLog.info(
+                                "[CANCEL CRQ] Calling Cygnet CRQ Status Update API for CRQ: {}",
+                                crqNo
+                        );
+
+                        crqStatusUpdateService.crqStatusUpdate(crqNo);
+
+                    } catch (Exception e) {
+                        cancelCrqLog.error(
+                                "[CANCEL CRQ] CRQ Status Update API failed",
+                                e
+                        );
+                    }
+
+                    // Existing Remedy cancellation API
                     crqService.callRemedyCancelCrqApi(crqNo, field1, field3, field4, field5);
                 });
 
