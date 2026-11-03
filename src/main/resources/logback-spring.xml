@@ -2,7 +2,7 @@
 
     <!--    <property name="LOG_DIR" value="C:/vegayan/simplus/viveklogs" />-->
 
-    <property name="LOG_DIR" value="D:/CHM_LOGS" />
+    <property name="LOG_DIR" value="D:/CHM_TND_LOGS" />
 
 
     <!-- ================= CONSOLE ================= -->
