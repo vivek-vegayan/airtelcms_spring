@@ -1,6 +1,5 @@
 package com.vegayan.airtelmanagement.activity.service;
 
-import com.vegayan.airtelmanagement.activity.dto.ActivityPhaseViewDTO;
 import com.vegayan.airtelmanagement.activity.dto.PlanActivityExcelParseResponseDto;
 import com.vegayan.airtelmanagement.activity.dto.PlanActivityExcelPhaseDto;
 import com.vegayan.airtelmanagement.activity.dto.PlanActivityExcelRowDto;
@@ -8,11 +7,8 @@ import com.vegayan.airtelmanagement.activity.dto.PlanActivityExcelRowResultDto;
 import com.vegayan.airtelmanagement.activity.dto.PlanActivityExcelUploadSummaryDto;
 import com.vegayan.airtelmanagement.activity.dto.PlanActivityInsertResultDto;
 import com.vegayan.airtelmanagement.activity.dto.PlanActivityValidationErrorDto;
-import com.vegayan.airtelmanagement.common.dto.PageResponseDto;
 import com.vegayan.airtelmanagement.common.service.BaseService;
 import com.vegayan.airtelmanagement.common.service.CommonService;
-import com.vegayan.airtelmanagement.schedular.dto.PlanDetailsDto;
-import com.vegayan.airtelmanagement.schedular.service.PlanSetupService;
 import com.vegayan.airtelmanagement.user.dto.DomainDto;
 import com.vegayan.airtelmanagement.user.dto.OrgHierarchyResponse;
 import com.vegayan.airtelmanagement.user.dto.SubDomainDto;
@@ -26,7 +22,6 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -50,14 +45,9 @@ import java.util.TreeSet;
 public class PlanActivityExcelService extends BaseService {
 
     private final UserService userService;
-    private final ActivityService activityService;
-    private final PlanSetupService planSetupService;
 
-    public PlanActivityExcelService(UserService userService, ActivityService activityService,
-                                     PlanSetupService planSetupService) {
+    public PlanActivityExcelService(UserService userService) {
         this.userService = userService;
-        this.activityService = activityService;
-        this.planSetupService = planSetupService;
     }
 
     private static final String UPLOAD_SHEET_NAME = "Upload";
@@ -246,9 +236,7 @@ public class PlanActivityExcelService extends BaseService {
         Set<String> teamPaths = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         teamPaths.addAll(buildTeamPaths(hierarchy));
 
-        Map<String, Integer> comboActivityFirstRow = new HashMap<>();
-        Map<String, Integer> comboPlanIdCache = new HashMap<>();
-        Map<Integer, List<ActivityPhaseViewDTO.ActivityEntry>> planActivitiesCache = new HashMap<>();
+        Map<String, Integer> activityFirstRow = new HashMap<>();
 
         for (PlanActivityExcelRowDto row : rows) {
             String ref = row.getActivityRef();
@@ -318,8 +306,7 @@ public class PlanActivityExcelService extends BaseService {
             validatePhases(errors, row, subDomainNameCount, teamPaths, planDomainSubDomains);
 
             if (domain != null && subDomain != null && !isBlank(row.getActivityName())) {
-                checkDuplicateActivity(errors, actorUserId, rn, row, domain, subDomain,
-                        comboActivityFirstRow, comboPlanIdCache, planActivitiesCache);
+                checkDuplicateInFile(errors, rn, row, domain, subDomain, activityFirstRow);
             }
         }
 
@@ -432,66 +419,22 @@ public class PlanActivityExcelService extends BaseService {
         return null;
     }
 
-    private void checkDuplicateActivity(List<PlanActivityValidationErrorDto> errors, Long actorUserId, int rn,
-                                         PlanActivityExcelRowDto row, DomainDto domain, SubDomainDto subDomain,
-                                         Map<String, Integer> comboActivityFirstRow,
-                                         Map<String, Integer> comboPlanIdCache,
-                                         Map<Integer, List<ActivityPhaseViewDTO.ActivityEntry>> planActivitiesCache) {
+    /** Only the same activity twice in one file is an error — an activity that already
+     *  exists in the DB is updated by sp_insert_plan_activity (export → edit → upload). */
+    private void checkDuplicateInFile(List<PlanActivityValidationErrorDto> errors, int rn,
+                                      PlanActivityExcelRowDto row, DomainDto domain, SubDomainDto subDomain,
+                                      Map<String, Integer> activityFirstRow) {
 
-        String ref = row.getActivityRef();
-        String comboKey = String.join("|",
+        // Same key as sp_insert_plan_activity's existing-plan lookup.
+        String activityKey = String.join("|",
                 String.valueOf(domain.getId()), String.valueOf(subDomain.getId()),
-                safe(row.getLayer()), safe(row.getPlanType()),
-                safe(row.getVendorOem()), safe(row.getChangeImpact())).toLowerCase();
+                safe(row.getNetworkDomain()), safe(row.getLayer()), safe(row.getPlanType()),
+                safe(row.getChangeImpact()), row.getActivityName().trim()).toLowerCase();
 
-        String activityKey = comboKey + "::" + row.getActivityName().trim().toLowerCase();
-        Integer priorRow = comboActivityFirstRow.get(activityKey);
-
+        Integer priorRow = activityFirstRow.putIfAbsent(activityKey, rn);
         if (priorRow != null) {
-            errors.add(err(rn, ref, "Activity Name", row.getActivityName(),
-                    "Duplicate Activity — same name already used for this Plan on row " + priorRow));
-        } else {
-            comboActivityFirstRow.put(activityKey, rn);
-        }
-
-        // Same Plan match as sp_insert_plan_activity's "EXISTING PLAN" lookup
-        // (chm_domain/chm_sub_domain/layer/plan_type/vendor_oem/change_impact).
-        Integer planId = comboPlanIdCache.computeIfAbsent(comboKey, k -> {
-            try {
-                PageResponseDto<PlanDetailsDto> page = planSetupService.getPlanDetails(
-                        actorUserId, 0L, 0L, domain.getId(), subDomain.getId(), "Active",
-                        PageRequest.of(0, 2000));
-                return page.getContent().stream()
-                        .filter(p -> namesEqual(p.getLayer(), row.getLayer())
-                                && namesEqual(p.getPlanType(), row.getPlanType())
-                                && namesEqual(p.getPlanVendor(), row.getVendorOem())
-                                && namesEqual(p.getChangeImpact(), row.getChangeImpact()))
-                        .map(PlanDetailsDto::getPlanId)
-                        .findFirst()
-                        .orElse(-1);
-            } catch (Exception ex) {
-                return -1;
-            }
-        });
-
-        if (planId < 0) {
-            return; // no existing Plan for this combo yet — nothing to collide with in the DB
-        }
-
-        List<ActivityPhaseViewDTO.ActivityEntry> existing = planActivitiesCache.computeIfAbsent(planId, id -> {
-            try {
-                return activityService.getActivityPhaseView(actorUserId, id.longValue()).getActivities();
-            } catch (Exception ex) {
-                return List.of();
-            }
-        });
-
-        boolean existsInDb = existing.stream().anyMatch(a ->
-                a.getActivityName() != null && a.getActivityName().trim().equalsIgnoreCase(row.getActivityName().trim()));
-
-        if (existsInDb) {
-            errors.add(err(rn, ref, "Activity Name", row.getActivityName(),
-                    "Duplicate Activity — an activity with this name already exists for this Plan"));
+            errors.add(err(rn, row.getActivityRef(), "Activity Name", row.getActivityName(),
+                    "Duplicate Activity — same activity already used in this file on row " + priorRow));
         }
     }
 
@@ -517,10 +460,6 @@ public class PlanActivityExcelService extends BaseService {
 
     private String str(Integer i) {
         return i == null ? "" : String.valueOf(i);
-    }
-
-    private boolean namesEqual(String a, String b) {
-        return safe(a).equalsIgnoreCase(safe(b));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -587,7 +526,7 @@ public class PlanActivityExcelService extends BaseService {
             results.add(new PlanActivityExcelRowResultDto(
                     row.getRowNumber(), row.getActivityRef(), row.getActivityName(),
                     failure == null ? "SUCCESS" : "FAILED",
-                    failure == null ? "Inserted " + PHASES.size() + " phases" : failure,
+                    failure == null ? "Saved " + PHASES.size() + " phases" : failure,
                     last != null ? last.getPlanId() : null,
                     last != null ? last.getActivityId() : null));
         }
