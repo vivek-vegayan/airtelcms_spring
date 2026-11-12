@@ -297,8 +297,8 @@ public class PlanActivityExcelService extends BaseService {
 
             if (isBlank(row.getActivityName())) {
                 errors.add(err(rn, ref, "Activity Name", row.getActivityName(), "Required (on the CRQ Review row)"));
-            } else if (row.getActivityName().trim().length() > 30) {
-                errors.add(err(rn, ref, "Activity Name", row.getActivityName(), "Must be 30 characters or fewer"));
+            } else if (row.getActivityName().trim().length() > 100) {
+                errors.add(err(rn, ref, "Activity Name", row.getActivityName(), "Must be 100 characters or fewer"));
             }
 
             Map<String, SubDomainDto> planDomainSubDomains = domain == null
