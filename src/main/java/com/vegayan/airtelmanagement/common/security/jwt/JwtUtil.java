@@ -19,6 +19,9 @@ public class JwtUtil {
     @Value("${jwt.token.expirationTime}")
     private long expirationTime;
 
+    @Value("${jwt.access.expirationTime:900000}")
+    private long accessExpirationTime;
+
     @Value("${jwt.simpleToken.expirationTime:604800000}")
     private long simpleTokenExpirationTime;
 
@@ -33,17 +36,43 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
+    // Short-lived access token sent on every API call.
     public String generateToken(Long userId, String tokenId) {
 
-        log.info("Generating JWT -> userId={}, tokenId={}", userId, tokenId);
+        log.debug("Generating access JWT -> userId={}, tokenId={}", userId, tokenId);
 
         return Jwts.builder()
                 .setSubject(String.valueOf(userId))
                 .setId(tokenId)
                 .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + accessExpirationTime))
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    // Long-lived refresh token (absolute session lifetime). Lives only in the
+    // httpOnly refresh_token cookie and is accepted only by /auth/v1/refresh.
+    public String generateRefreshToken(Long userId, String tokenId) {
+        return Jwts.builder()
+                .setSubject(String.valueOf(userId))
+                .setId(tokenId)
+                .claim("type", "refresh")
+                .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expirationTime))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    public boolean isRefreshToken(Claims claims) {
+        return "refresh".equals(claims.get("type", String.class));
+    }
+
+    public long getAccessExpirationSeconds() {
+        return accessExpirationTime / 1000;
+    }
+
+    public long getRefreshExpirationSeconds() {
+        return expirationTime / 1000;
     }
 
     public Claims extractClaims(String token) {

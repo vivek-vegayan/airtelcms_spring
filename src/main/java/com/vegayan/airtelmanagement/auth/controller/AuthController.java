@@ -8,7 +8,9 @@ import com.vegayan.airtelmanagement.auth.service.AuthService;
 import com.vegayan.airtelmanagement.common.dto.ApiResponse;
 import com.vegayan.airtelmanagement.common.exception.DatabaseOperationException;
 import com.vegayan.airtelmanagement.common.security.jwt.JwtUtil;
+import com.vegayan.airtelmanagement.common.security.session.TokenValidationService;
 import com.vegayan.airtelmanagement.common.service.BaseService;
+import io.jsonwebtoken.Claims;
 import com.vegayan.airtelmanagement.user.dto.UserCredentialsDto;
 import com.vegayan.airtelmanagement.user.service.UserService;
 import com.vegayan.airtelmanagement.usermanagement.dto.LoginTokenResponseDto;
@@ -28,21 +30,26 @@ import java.util.Map;
 @RequestMapping("/auth")
 public class    AuthController extends BaseService {
 
+    private static final String REFRESH_COOKIE = "refresh_token";
+
     private final AuthService authService;
     private final JwtUtil jwtUtil;
     private final UserService userService;
     private final AuditLogService auditLogService;
+    private final TokenValidationService tokenValidationService;
 
     public AuthController(
             AuthService authService,
             JwtUtil jwtUtil,
             UserService userService,
-            AuditLogService auditLogService
+            AuditLogService auditLogService,
+            TokenValidationService tokenValidationService
     ) {
         this.authService = authService;
         this.jwtUtil = jwtUtil;
         this.userService = userService;
         this.auditLogService = auditLogService;
+        this.tokenValidationService = tokenValidationService;
     }
 
     @PostMapping("/v1/signin")
@@ -59,12 +66,13 @@ public class    AuthController extends BaseService {
                         loginResponse.getUserId(),
                         loginResponse.getTokenId()
                 );
-
-                String cookieHeader = String.format(
-                        "jwt=%s; Max-Age=%d; Path=/; HttpOnly; SameSite=Lax",
-                        jwtToken, 60 * 60 // 1 hour
+                String refreshToken = jwtUtil.generateRefreshToken(
+                        loginResponse.getUserId(),
+                        loginResponse.getTokenId()
                 );
-                response.setHeader("Set-Cookie", cookieHeader);
+
+                setCookie(response, "jwt", jwtToken, jwtUtil.getAccessExpirationSeconds());
+                setCookie(response, REFRESH_COOKIE, refreshToken, jwtUtil.getRefreshExpirationSeconds());
 
                 LoginResponseDto responseBody = new LoginResponseDto(
                         "Success",
@@ -101,6 +109,35 @@ public class    AuthController extends BaseService {
         }
     }
 
+
+    // Issues a fresh access token from the httpOnly refresh_token cookie. The
+    // frontend calls it when an access token expires and, throttled, on user
+    // activity — isTokenValid also slides the session's idle deadline, so this
+    // is the activity heartbeat too. 401 means the session is over.
+    @PostMapping("/v1/refresh")
+    public ResponseEntity<?> refresh(HttpServletRequest request, HttpServletResponse response) {
+        String refreshToken = readCookie(request, REFRESH_COOKIE);
+        try {
+            if (refreshToken != null) {
+                Claims claims = jwtUtil.extractClaims(refreshToken);
+                String subject = claims.getSubject();
+                if (jwtUtil.isRefreshToken(claims) && subject != null && subject.matches("\\d+")) {
+                    Long userId = Long.valueOf(subject);
+                    if (tokenValidationService.isTokenValid(userId, claims.getId())) {
+                        String accessToken = jwtUtil.generateToken(userId, claims.getId());
+                        setCookie(response, "jwt", accessToken, jwtUtil.getAccessExpirationSeconds());
+                        return ResponseEntity.ok(
+                                new LoginResponseDto("Success", "Token refreshed", accessToken, userId));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.debug("Refresh token rejected", e);
+        }
+        clearJwtCookie(response);
+        return ResponseEntity.status(HttpServletResponse.SC_UNAUTHORIZED)
+                .body(new ApiResponse("Fail", "Session expired"));
+    }
 
     @PostMapping("/v1/logout")
     public ResponseEntity<?> logout(
@@ -186,32 +223,36 @@ public class    AuthController extends BaseService {
         }
     }
 
+    // Clears both the access and the refresh cookie.
     private void clearJwtCookie(HttpServletResponse response) {
-        Cookie jwtCookie = new Cookie("jwt", "");
-        jwtCookie.setPath("/");
-        jwtCookie.setHttpOnly(true);
-        jwtCookie.setSecure(false);
-        jwtCookie.setMaxAge(0);
-        response.addCookie(jwtCookie);
+        setCookie(response, "jwt", "", 0);
+        setCookie(response, REFRESH_COOKIE, "", 0);
     }
 
+    private void setCookie(HttpServletResponse response, String name, String value, long maxAgeSeconds) {
+        response.addHeader("Set-Cookie", String.format(
+                "%s=%s; Max-Age=%d; Path=/; HttpOnly; SameSite=Lax", name, value, maxAgeSeconds));
+    }
+
+    private String readCookie(HttpServletRequest request, String name) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+        for (Cookie cookie : cookies) {
+            if (name.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
+    }
 
     private String extractToken(HttpServletRequest request) {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             return header.substring(7);
         }
-
-        Cookie[] cookies = request.getCookies();
-        if (cookies == null) {
-            return null;
-        }
-        for (Cookie cookie : cookies) {
-            if ("jwt".equals(cookie.getName())) {
-                return cookie.getValue();
-            }
-        }
-        return null;
+        return readCookie(request, "jwt");
     }
 
 

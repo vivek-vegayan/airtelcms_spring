@@ -29,6 +29,8 @@ public final class PublicEndpoints {
             "/test/**",
             "/auth/v1/signin",
             "/auth/v1/session/terminate",
+            // Authenticated by the refresh_token cookie inside the controller.
+            "/auth/v1/refresh",
             "/actuator/**",
             "/users/signup",
             "/api/python/runScript",

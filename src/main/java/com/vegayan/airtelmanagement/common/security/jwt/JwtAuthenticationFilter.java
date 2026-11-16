@@ -89,6 +89,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Claims claims = jwtUtil.extractClaims(token);
             String subject = claims.getSubject();
 
+            // A refresh token may only be exchanged at /auth/v1/refresh, never
+            // used as an access token.
+            if (jwtUtil.isRefreshToken(claims)) {
+                sendUnauthorized(response, "Invalid token");
+                return;
+            }
+
             // Tokens from /usermanagement/v1/getaccesstoken (generateSimpleAccessToken)
             // carry the raw username as the subject instead of a numeric userId,
             // and have no DB-backed session (no tokenId/jti, no AUTH_JWT_TOKENS row).
