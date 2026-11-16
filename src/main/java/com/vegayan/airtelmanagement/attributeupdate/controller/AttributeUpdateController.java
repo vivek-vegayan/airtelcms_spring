@@ -49,6 +49,12 @@ public class AttributeUpdateController {
     }
 
 
+    @GetMapping("/dropdown/circle")
+    public List<String> getCircleCodes() {
+        return attributeUpdateService.getCircleCodes();
+    }
+
+
     @PostMapping("/save")
     public ResponseEntity<AttributeUpdateSaveResponseDto> save(
             @RequestBody AttributeUpdateSaveRequestDto request) {

@@ -17,6 +17,9 @@ public class CabAttrDto {
     private String hostName;
     private String layer;
     private String nodeIpAddress;
+    private String scheduledImplementer;
+    private String circle;
+    private String taskId;
     private String technology;
     private String impactAnalysisDoneBy;
     private LocalDateTime impactAnalysisDoneByTime;
@@ -50,6 +53,7 @@ public class CabAttrDto {
 
     private String mopExecutionMethod;
     private String crqApprovalStatus;
+    private String changeRequestStatus;
     private String changeActivityDone;
     private LocalDateTime changeActivityDoneTime;
     private String crqClosedBy;

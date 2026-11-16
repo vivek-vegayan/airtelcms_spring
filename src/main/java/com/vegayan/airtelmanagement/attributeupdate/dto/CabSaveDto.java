@@ -19,6 +19,12 @@ public class CabSaveDto {
     private String hostName;
     private String layer;
     private String nodeIpAddress;
+
+    // Plan & Inventory Validation
+    private String scheduledImplementer;   // OLM ID
+    private String circle;
+    private String taskId;                 // comma separated task IDs
+
     private String technology;
     private String impactAnalysisDoneBy;
 
@@ -70,6 +76,7 @@ public class CabSaveDto {
     private String executerLocation;
     private String mopExecutionMethod;
     private String crqApprovalStatus;
+    private String changeRequestStatus;
     private String changeActivityDone;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

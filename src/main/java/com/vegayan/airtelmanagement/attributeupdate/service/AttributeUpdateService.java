@@ -67,6 +67,12 @@ public class AttributeUpdateService extends BaseService {
                 jdbcTemplateTwo, "CALL GET_IMPL_GROUP_DROPDOWN(?,?)", company, organization);
     }
 
+    public List<String> getCircleCodes() {
+        LOGGER.info("call GET_DISTINCT_CIRCLE_CODES();");
+        return databaseUtils.executeProcedureForStringList(
+                jdbcTemplateTwo, "CALL GET_DISTINCT_CIRCLE_CODES()");
+    }
+
     private RemedyAttrDto latestRemedy(String crqNo, String cmsStage) {
         LOGGER.info("call GET_REMEDY_DETAILS_BY_STAGE('{}', '{}');", cmsStage, crqNo);
         List<RemedyAttrDto> rows = databaseUtils.executeProcedureGetDataWithError(
@@ -231,7 +237,13 @@ public class AttributeUpdateService extends BaseService {
             var cab = request.getCab();
 
             // Map CAB fields to Remedy CAB Request Values
-            values.setChangeRequestStatus(cab.getCrqApprovalStatus());
+            values.setChangeRequestStatus(cab.getChangeRequestStatus());
+            values.setCrqApprovalStatus(cab.getCrqApprovalStatus());
+
+            // Plan & Inventory Validation
+            values.setScheduledImplementer(cab.getScheduledImplementer());
+            values.setCircle(cab.getCircle());
+            values.setTaskId(cab.getTaskId());
 
             values.setImpactedPartiesCab(cab.getImpactedPartiesCab());
             values.setTechnology(cab.getTechnology());

@@ -9,6 +9,18 @@ public class RemedyCabRequestValues {
     @JsonProperty("Change Request Status")
     private String changeRequestStatus;
 
+    @JsonProperty("CRQ approval status")
+    private String crqApprovalStatus;
+
+    @JsonProperty("Scheduled Implementer")
+    private String scheduledImplementer;
+
+    @JsonProperty("Circle")
+    private String circle;
+
+    @JsonProperty("Task ID")
+    private String taskId;
+
     @JsonProperty("Technology")
     private String technology;
 
