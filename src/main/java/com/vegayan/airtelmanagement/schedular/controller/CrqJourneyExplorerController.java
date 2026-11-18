@@ -3,7 +3,9 @@ package com.vegayan.airtelmanagement.schedular.controller;
 import com.vegayan.airtelmanagement.schedular.dto.CrqDetailsResponseDto;
 import com.vegayan.airtelmanagement.schedular.dto.CrqJourneyPageDto;
 import com.vegayan.airtelmanagement.schedular.dto.CrqJourneySearchRowDto;
+import com.vegayan.airtelmanagement.schedular.dto.PlanResponseDtoNew;
 import com.vegayan.airtelmanagement.schedular.service.CrqJourneyExplorerService;
+import com.vegayan.airtelmanagement.schedular.service.CrqWorkflowService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +22,7 @@ import java.util.List;
 public class CrqJourneyExplorerController {
 
     private final CrqJourneyExplorerService crqJourneyExplorerService;
+    private final CrqWorkflowService crqWorkflowService;
 
     @GetMapping("/crqs")
     public List<CrqJourneySearchRowDto> getCrqsBySubDomain(Authentication authentication,
@@ -37,5 +40,11 @@ public class CrqJourneyExplorerController {
     @GetMapping("/{crqNo}/details")
     public CrqDetailsResponseDto getCrqDetails(@PathVariable String crqNo) {
         return crqJourneyExplorerService.getCrqDetails(crqNo);
+    }
+
+    /** "CRQ Details" button on the journey page - sp_get_journey_page_crq_details. */
+    @GetMapping("/{crqNo}/crq-details")
+    public PlanResponseDtoNew getJourneyPageCrqDetails(@PathVariable String crqNo) {
+        return crqWorkflowService.getJourneyPageCrqDetails(crqNo);
     }
 }
