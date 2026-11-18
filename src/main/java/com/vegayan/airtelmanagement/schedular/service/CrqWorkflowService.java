@@ -1385,6 +1385,22 @@ public class CrqWorkflowService extends BaseService {
         return withStageHistoryForCrq(builder.build(flat), crqNo);
     }
 
+    /**
+     * CRQ Journey page "CRQ Details" button. Same response shape as
+     * getWorkflowOverviewByCrqNo (so the UI reuses the scheduler's dialog), but
+     * keyed on the CRQ number alone - the journey page has no domain scope.
+     */
+    public PlanResponseDtoNew getJourneyPageCrqDetails(String crqNo) {
+        LOGGER.info("call sp_get_journey_page_crq_details('{}');", crqNo);
+        List<CrqOverviewDto> flat = databaseUtils.executeProcedureGetDataWithError(
+                jdbcTemplateTwo,
+                "CALL sp_get_journey_page_crq_details(?)",
+                CrqOverviewDto.class,
+                crqNo
+        );
+        return withStageHistoryForCrq(builder.build(flat), crqNo);
+    }
+
     //----------------------------GLOBAL CRQ SEARCH-----------------------------------------
 
     /** Hard cap on Global CRQ Search hits, whatever the caller asks for. */
