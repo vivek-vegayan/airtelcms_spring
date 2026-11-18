@@ -544,6 +544,58 @@ public class DatabaseUtils {
         });
     }
 
+    /**
+     * Runs a stored procedure that emits several result sets and maps result set N straight from
+     * the ResultSet with {@code rowMappers.get(N)} (e.g. a BeanPropertyRowMapper per DTO) - one read
+     * per row, no intermediate maps. Result sets beyond the mappers given are skipped; a missing
+     * result set comes back as an empty list, so the returned list always has one entry per mapper.
+     * <p>
+     * Database errors (including a procedure SIGNAL) are left as DataAccessException, so the
+     * GlobalExceptionHandler can return the procedure's own message.
+     */
+    public List<List<?>> executeProcedureResultSets(
+            JdbcTemplate jdbcTemplate,
+            String sql,
+            List<? extends RowMapper<?>> rowMappers,
+            Object... args
+    ) {
+        logProcedureCall(sql, args);
+
+        return jdbcTemplate.execute((Connection con) -> {
+            CallableStatement cs = con.prepareCall(sql);
+            for (int i = 0; i < args.length; i++) {
+                cs.setObject(i + 1, args[i]);
+            }
+            return cs;
+        }, (CallableStatement cs) -> {
+
+            List<List<?>> all = new ArrayList<>(rowMappers.size());
+            boolean hasResults = cs.execute();
+            int index = 0;
+
+            while (hasResults) {
+                if (index < rowMappers.size()) {
+                    RowMapper<?> mapper = rowMappers.get(index);
+                    List<Object> rows = new ArrayList<>();
+                    try (ResultSet rs = cs.getResultSet()) {
+                        int rowNum = 0;
+                        while (rs.next()) {
+                            rows.add(mapper.mapRow(rs, rowNum++));
+                        }
+                    }
+                    all.add(rows);
+                }
+                index++;
+                hasResults = cs.getMoreResults();
+            }
+
+            while (all.size() < rowMappers.size()) {
+                all.add(List.of());
+            }
+            return all;
+        });
+    }
+
     public <T> List<T> executeProcedureGetDataWithError(
             JdbcTemplate jdbcTemplate,
             String sql,
