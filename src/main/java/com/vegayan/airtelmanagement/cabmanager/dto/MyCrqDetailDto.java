@@ -2,6 +2,8 @@ package com.vegayan.airtelmanagement.cabmanager.dto;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 public class MyCrqDetailDto {
     private Long serviceApprovalId;
@@ -12,5 +14,7 @@ public class MyCrqDetailDto {
     private String currentStage;
     private String serviceCode;
     private String stageStatus;
+    private LocalDateTime executionStartDate;
+    private LocalDateTime executionEndDate;
     private Double slaPercentage;
 }
