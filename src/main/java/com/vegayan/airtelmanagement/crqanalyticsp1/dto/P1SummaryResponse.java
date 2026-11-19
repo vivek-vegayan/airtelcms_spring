@@ -4,9 +4,9 @@ import lombok.Data;
 
 import java.util.List;
 
-/** GET /crq-analytics-p1/results (CRQ_AN_SP_P1_RESULTS). */
+/** GET /crq-analytics-p1/summary/overview (CRQ_AN_SP_P1_RESULTS). */
 @Data
-public class P1ResultsResponse {
+public class P1SummaryResponse {
     private P1KeyNumbersDto keyNumbers;
     private List<P1StepDto> steps;
     private List<P1ExecCellDto> executive;

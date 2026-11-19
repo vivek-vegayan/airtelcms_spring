@@ -4,7 +4,7 @@ import lombok.Data;
 
 import java.util.List;
 
-/** GET /crq-analytics-p1/breakdown (CRQ_AN_SP_P1_BREAKDOWN). */
+/** GET /crq-analytics-p1/summary/breakdown (CRQ_AN_SP_P1_BREAKDOWN). */
 @Data
 public class P1BreakdownResponse {
     private List<P1CircleTeamDto> circleTeam;

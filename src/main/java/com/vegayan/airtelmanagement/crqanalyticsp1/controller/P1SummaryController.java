@@ -2,8 +2,8 @@ package com.vegayan.airtelmanagement.crqanalyticsp1.controller;
 
 import com.vegayan.airtelmanagement.crqanalyticsp1.dto.P1BreakdownResponse;
 import com.vegayan.airtelmanagement.crqanalyticsp1.dto.P1FilterRequest;
-import com.vegayan.airtelmanagement.crqanalyticsp1.dto.P1ResultsResponse;
-import com.vegayan.airtelmanagement.crqanalyticsp1.service.P1ResultsService;
+import com.vegayan.airtelmanagement.crqanalyticsp1.dto.P1SummaryResponse;
+import com.vegayan.airtelmanagement.crqanalyticsp1.service.P1SummaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -11,23 +11,23 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Results tab: how CRQs ended. The page never sends a stage filter here.
+ * Summary tab: how CRQs ended. The page never sends a stage filter here.
  * Range [from, to) as yyyy-MM-dd HH:mm:ss (IST), default last 7 days. months = window of the
  * month-by-month cards (1-36, default 6); those cards ignore the range.
  */
 @RestController
-@RequestMapping("/crq-analytics-p1/results")
+@RequestMapping("/crq-analytics-p1/summary")
 @RequiredArgsConstructor
-public class P1ResultsController {
+public class P1SummaryController {
 
-    private final P1ResultsService service;
+    private final P1SummaryService service;
 
     /**
      * Key numbers, steps (daily status, flow, received vs done), executive summary, summary by period,
      * and the cancelled / rejected cards (by side, month, reason, stage, circle). CRQ_AN_SP_P1_RESULTS.
      */
-    @GetMapping("/summary")
-    public P1ResultsResponse getSummary(
+    @GetMapping("/overview")
+    public P1SummaryResponse getOverview(
             @RequestParam(required = false) String vertical,
             @RequestParam(required = false) String function,
             @RequestParam(required = false) String domain,
@@ -37,7 +37,7 @@ public class P1ResultsController {
             @RequestParam(required = false) String from,
             @RequestParam(required = false) String to,
             @RequestParam(defaultValue = "6") Integer months) {
-        return service.getSummary(
+        return service.getOverview(
                 P1FilterRequest.of(vertical, function, domain, subDomain, circle, stage), from, to, months);
     }
 

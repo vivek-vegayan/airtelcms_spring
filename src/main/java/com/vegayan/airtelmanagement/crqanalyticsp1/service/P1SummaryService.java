@@ -7,13 +7,13 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * Backs P1ResultsController: the Results tab. One method per procedure; the mapper lists follow
+ * Backs P1SummaryController: the Summary tab. One method per procedure; the mapper lists follow
  * the procedures' result sets in order.
  */
 @Service
-public class P1ResultsService extends CrqAnalyticsP1BaseService {
+public class P1SummaryService extends CrqAnalyticsP1BaseService {
 
-    private static final List<RowMapper<?>> SUMMARY = List.of(
+    private static final List<RowMapper<?>> OVERVIEW = List.of(
             bean(P1KeyNumbersDto.class), bean(P1StepDto.class), bean(P1ExecCellDto.class), bean(P1PeriodRowDto.class),
             bean(P1StopSideDto.class), bean(P1StopMonthDto.class), bean(P1StopReasonDto.class),
             bean(P1StopStageDto.class), bean(P1StopGeoDto.class));
@@ -24,11 +24,11 @@ public class P1ResultsService extends CrqAnalyticsP1BaseService {
             bean(P1BreakdownMetaDto.class), bean(P1StopGeoDto.class));
 
     /** CRQ_AN_SP_P1_RESULTS(6 filters, p_from, p_to, p_months). */
-    public P1ResultsResponse getSummary(P1FilterRequest filter, String from, String to, Integer months) {
-        List<List<?>> rs = call("CALL CRQ_AN_SP_P1_RESULTS(?,?,?,?,?,?,?,?,?)", SUMMARY,
+    public P1SummaryResponse getOverview(P1FilterRequest filter, String from, String to, Integer months) {
+        List<List<?>> rs = call("CALL CRQ_AN_SP_P1_RESULTS(?,?,?,?,?,?,?,?,?)", OVERVIEW,
                 filterArgs(filter, dateTimeArg("from", from), dateTimeArg("to", to), months));
 
-        P1ResultsResponse response = new P1ResultsResponse();
+        P1SummaryResponse response = new P1SummaryResponse();
         response.setKeyNumbers(first(rs, 0));
         response.setSteps(rows(rs, 1));
         response.setExecutive(rows(rs, 2));
