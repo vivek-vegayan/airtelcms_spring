@@ -81,6 +81,9 @@ public class SecurityConfig {
                 // Production - Airtel LB
                 "https://chngmgmt.airtel.com",
 
+                // Local Development
+                "http://localhost:5174",
+
                 // Development / internal environments
                 "http://192.168.0.156:3011",
                 "http://10.240.129.36:3011",
