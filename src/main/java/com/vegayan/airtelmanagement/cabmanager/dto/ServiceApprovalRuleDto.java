@@ -7,6 +7,7 @@ public class ServiceApprovalRuleDto {
     private String id;
     private String service;
     private String circle;
+    private String changeImpact; // Change_Impact — "SA" / "NSA"
     private String l1;
     private String l1OlmId;
     private String l1EscalationTime; // TIME as "HH:mm:ss"

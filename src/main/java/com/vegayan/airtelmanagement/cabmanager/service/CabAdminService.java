@@ -115,16 +115,18 @@ public class CabAdminService extends BaseService {
         String l1Time = blankToNull(request.getL1EscalationTime());
         String l2Time = blankToNull(request.getL2EscalationTime());
         String l3Time = blankToNull(request.getL3EscalationTime());
+        // Mandatory on insert, ignored on update — the proc enforces both.
+        String changeImpact = blankToNull(request.getChangeImpact());
 
         LOGGER.info(
-                "call sp_crq_cab_upsert_escalation_config ({},'{}','{}','{}','{}','{}','{}','{}','{}',{},{});",
-                request.getId(), request.getService(), request.getCircle(),
-                request.getL1(), request.getL2(), request.getL3(),
+                "call sp_crq_cab_upsert_escalation_config ({},'{}','{}','{}','{}','{}','{}','{}','{}','{}',{},{});",
+                request.getId(), request.getService(), request.getCircle(), changeImpact,
+                request.getL1OlmId(), request.getL2OlmId(), request.getL3OlmId(),
                 l1Time, l2Time, l3Time,
                 request.getActive(), actorUserId
         );
 
-        String sql = "CALL sp_crq_cab_upsert_escalation_config (?,?,?,?,?,?,?,?,?,?,?)";
+        String sql = "CALL sp_crq_cab_upsert_escalation_config (?,?,?,?,?,?,?,?,?,?,?,?)";
 
         EscalationUpsertResultDto result = databaseUtils.executeProcedureSingleResultWithError(
                 jdbcTemplateTwo,
@@ -133,9 +135,10 @@ public class CabAdminService extends BaseService {
                 request.getId(),
                 request.getService(),
                 request.getCircle(),
-                request.getL1(),
-                request.getL2(),
-                request.getL3(),
+                changeImpact,
+                request.getL1OlmId(),
+                request.getL2OlmId(),
+                request.getL3OlmId(),
                 l1Time,
                 l2Time,
                 l3Time,
@@ -148,7 +151,8 @@ public class CabAdminService extends BaseService {
         return ApiResponse.builder()
                 .status("Success")
                 .message("Service escalation " + (wasUpdate ? "updated" : "added")
-                        + " for " + request.getService() + " / " + request.getCircle() + ".")
+                        + " for " + request.getService() + " / " + request.getCircle()
+                        + (changeImpact != null ? " / " + changeImpact : "") + ".")
                 .build();
     }
 
