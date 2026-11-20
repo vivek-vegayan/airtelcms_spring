@@ -16,7 +16,8 @@ public class CrqDto {
     private String stageStatus;
     private String serviceApprovalStatus;
     private String changeImpact;
-    private Integer slaPercentage;
+    // Decimal in the procs (e.g. 212.64); Integer truncated it.
+    private Double slaPercentage;
     private LocalDateTime createdAt;
     // Execution_Start_Date / Execution_End_Date — returned by sp_get_cab_crq_by_id
     // (detail drawer); null for the list procs that don't select them.

@@ -14,6 +14,8 @@ public class MyCrqDetailDto {
     private String currentStage;
     private String serviceCode;
     private String stageStatus;
+    // Change_Impact — SA / NSA, returned by sp_get_cab_my_crq_by_id.
+    private String changeImpact;
     private LocalDateTime executionStartDate;
     private LocalDateTime executionEndDate;
     private Double slaPercentage;
